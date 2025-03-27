@@ -28,12 +28,6 @@ const userSchema = new Schema<UserType>({
         type: String, 
         required: true ,
         unique: true,
-        validate: {
-            validator: function(v: string) {
-                return /^\+8801\d{9}$/.test(v);
-            },
-            message: 'Invalid Bangladeshi phone number'
-        }
     },
     birthDate: { 
         type: String, 
@@ -93,6 +87,12 @@ const userSchema = new Schema<UserType>({
     reportCount: {
         type: Number,
         default: 0
+    },
+    latitude: {
+        type: Number
+    },
+    longitude: {
+        type: Number
     },
     fingerPrint: {
         visitorId: { type: String, },

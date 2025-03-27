@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import encryptPass from "../../handler/validation/encryptPass";
 import userModel from "../../models/user/userSchema";
 import generateJwt from "../../handler/validation/generateJwt";
+import addActiveUser from "../../handler/user/addActiveUser";
 
 const createUser = async (req: Request, res: Response): Promise<void> => {
     const data = JSON.parse(req.body.userData)
@@ -14,8 +15,22 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
 
         const user = await userModel.create(data)
         
+        addActiveUser(user._id)
+        
         const token = generateJwt(user.phone, user._id, user.role)
-        res.status(201).json({ message: "Registeration successful", user, token })
+        
+        // Set cookie with minimal options
+        res.cookie('token', token,{
+            httpOnly: true,
+            sameSite: 'none',
+            secure: true
+        })
+        
+        res.status(201).json({ 
+            success: true,
+            message: "Registration successful", 
+            user
+        })
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: "User creation failed", error })

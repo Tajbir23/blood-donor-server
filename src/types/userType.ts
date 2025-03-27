@@ -24,6 +24,8 @@ interface UserType {
     isActive: boolean;
     isVerified: boolean;
     reportCount: number;
+    latitude: number;
+    longitude: number;
     fingerPrint: FingerprintDataType;
     createdAt: string;
     updatedAt: string;
