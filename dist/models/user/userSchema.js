@@ -1,18 +1,15 @@
-import { model, Schema } from "mongoose";
-import UserType from "../../types/userType";
-
-const userSchema = new Schema<UserType>({
-    email: { 
-        type: String, 
-        required: true, 
-        unique: true 
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const mongoose_1 = require("mongoose");
+const userSchema = new mongoose_1.Schema({
+    email: {
+        type: String,
+        required: true,
+        unique: true
     },
-    emailVerified: {
-        type: Boolean
-    },
-    fullName: { 
-        type: String, 
-        required: true 
+    fullName: {
+        type: String,
+        required: true
     },
     role: {
         type: String,
@@ -20,62 +17,62 @@ const userSchema = new Schema<UserType>({
         enum: ['user', 'admin', 'superAdmin', 'moderator', 'associationSuperAdmin', 'associationModerator', 'associationAdmin']
     },
     associationId: {
-        type: Schema.Types.ObjectId,
+        type: mongoose_1.Schema.Types.ObjectId,
         ref: 'Association',
     },
     password: {
         type: String,
         required: true
     },
-    phone: { 
-        type: String, 
-        required: true ,
+    phone: {
+        type: String,
+        required: true,
         unique: true,
     },
-    birthDate: { 
-        type: String, 
-        required: true 
+    birthDate: {
+        type: String,
+        required: true
     },
-    bloodGroup: { 
-        type: String, 
+    bloodGroup: {
+        type: String,
         required: true,
         enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
     },
-    gender: { 
-        type: String, 
+    gender: {
+        type: String,
         required: true,
         enum: ['male', 'female', 'other']
     },
-    lastDonationDate: { 
+    lastDonationDate: {
         type: String,
         default: null
     },
-    canDonate: { 
-        type: Boolean, 
-        default: true 
+    canDonate: {
+        type: Boolean,
+        default: true
     },
-    nextDonationDate: { 
+    nextDonationDate: {
         type: String,
         default: null
     },
-    districtId: { 
-        type: String, 
-        required: true 
+    districtId: {
+        type: String,
+        required: true
     },
-    thanaId: { 
-        type: String, 
-        required: true 
+    thanaId: {
+        type: String,
+        required: true
     },
-    address: { 
-        type: String, 
-        required: true 
+    address: {
+        type: String,
+        required: true
     },
-    profileImageUrl: { 
+    profileImageUrl: {
         type: String,
         default: null
     },
-    agreedToTerms: { 
-        type: Boolean, 
+    agreedToTerms: {
+        type: Boolean,
         required: true,
         default: false
     },
@@ -122,9 +119,8 @@ const userSchema = new Schema<UserType>({
         audio: { type: String },
         deviceId: { type: String }
     }
-}, { 
-    timestamps: true 
+}, {
+    timestamps: true
 });
-
-const userModel = model<UserType>("User", userSchema)
-export default userModel
+const userModel = (0, mongoose_1.model)("User", userSchema);
+exports.default = userModel;

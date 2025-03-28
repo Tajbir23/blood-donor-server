@@ -11,6 +11,7 @@ import router from './router/router'
 import detectVpn from './handler/validation/detectVpn'
 import scheduleAssociationCheck from './cron/associationCheck'
 import morgan from 'morgan'
+import path from 'path'
 const PORT = process.env.PORT || 4000
 
 export const app = express()
@@ -37,6 +38,9 @@ app.use(cors({
     origin: allowOrigins,
     credentials: true
 }))
+
+// Set up static file serving for uploads directory
+app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Apply rate limiting to API routes
 app.use('/api/', apiLimiter, router)

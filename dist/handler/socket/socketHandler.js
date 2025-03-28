@@ -1,5 +1,7 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const setUpSocketHandler = (io) => {
     io.on('connection', (socket) => {
     });
 };
-export default setUpSocketHandler;
+exports.default = setUpSocketHandler;

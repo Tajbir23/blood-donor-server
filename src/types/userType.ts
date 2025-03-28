@@ -4,6 +4,7 @@ import { FingerprintDataType } from "./fingerprintType";
 interface UserType {
     _id: string;
     email: string;
+    emailVerified: boolean;
     fullName: string;
     role: string;
     phone: string;
