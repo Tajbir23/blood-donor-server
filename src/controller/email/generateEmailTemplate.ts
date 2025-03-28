@@ -1,5 +1,5 @@
 // Define email template types
-export type EmailType = 'otp' | 'support' | 'bloodRequest' | 'verifyEmail';
+export type EmailType = 'otp' | 'support' | 'bloodRequest' | 'verifyEmail' | 'forgot-password';
 
 // Function to generate dynamic HTML content based on template type
 const generateEmailTemplate = (type: EmailType, data: any): string => {
@@ -10,7 +10,7 @@ const generateEmailTemplate = (type: EmailType, data: any): string => {
             return `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                     <div style="text-align: center; padding: 10px; background-color: #f44336; color: white;">
-                        <h2>ব্লাড ডোনার</h2>
+                        <h2>ব্লাড ডোনার ওটিপি যাচাই</h2>
                     </div>
                     <div style="padding: 20px;">
                         <h3>যাচাইকরণ কোড</h3>
@@ -25,7 +25,25 @@ const generateEmailTemplate = (type: EmailType, data: any): string => {
                     </div>
                 </div>
             `;
-            
+        case 'forgot-password':
+            return `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                    <div style="text-align: center; padding: 10px; background-color: #f44336; color: white;">
+                        <h2>পাসওয়ার্ড রিসেট</h2>
+                    </div>
+                    <div style="padding: 20px;">
+                        <h3>আপনার নতুন পাসওয়ার্ড</h3>
+                        <p>প্রিয় ${data.name},</p>
+                        <p>আপনার পাসওয়ার্ড রিসেট করা হয়েছে। আপনার নতুন পাসওয়ার্ড হল:</p>
+                        <div style="text-align: center; padding: 15px; background-color: #f5f5f5; font-size: 24px; font-weight: bold; letter-spacing: 5px;">
+                            ${data.newPassword}
+                        </div>
+                        <p style="color: #f44336; font-weight: bold;">সুরক্ষার জন্য, অনুগ্রহ করে লগইন করার পর অবিলম্বে আপনার পাসওয়ার্ড পরিবর্তন করুন।</p>
+                        <p>আপনি যদি এই পাসওয়ার্ড রিসেট অনুরোধ না করে থাকেন, তাহলে অনুগ্রহ করে আমাদের সাথে যোগাযোগ করুন।</p>
+                        <p>শুভেচ্ছান্তে,<br>ব্লাড ডোনার টিম</p>
+                    </div>
+                </div>
+            `;
         case 'support':
             return `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">

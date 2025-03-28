@@ -49,7 +49,9 @@ const sendEmail = async (data : ResponseEmailType): Promise<ResponseEmailMessage
         to: email,                    // List of receivers
         subject: emailSubject,        // Dynamic subject based on template type
         html: htmlContent,            // HTML body
-        text: (templateType === "otp" || templateType === "verifyEmail") ? templateData?.otp : templateData?.message
+        text: (templateType === "otp" || templateType === "verifyEmail") ? templateData?.otp : 
+              (templateType === "forgot-password") ? `আপনার নতুন পাসওয়ার্ড: ${templateData?.newPassword}` : 
+              templateData?.message
     };
 
     try {
