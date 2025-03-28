@@ -2,7 +2,9 @@ export interface ResponseEmailType {
     email: string;
     subject: string;
     templateType: string;
-    templateData: string
+    templateData: {
+        [key: string]: string
+    }
 }
 
 export interface ResponseEmailMessage {

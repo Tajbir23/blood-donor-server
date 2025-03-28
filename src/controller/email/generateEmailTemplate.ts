@@ -16,7 +16,7 @@ const generateEmailTemplate = (type: EmailType, data: any): string => {
                         <p>প্রিয় ব্যবহারকারী,</p>
                         <p>আপনার অ্যাকাউন্ট যাচাইকরণের জন্য ওটিপি হল:</p>
                         <div style="text-align: center; padding: 15px; background-color: #f5f5f5; font-size: 24px; font-weight: bold; letter-spacing: 5px;">
-                            ${data}
+                            ${data.otp}
                         </div>
                         <p>এই কোডটি ১০ মিনিটের মধ্যে মেয়াদ শেষ হবে।</p>
                         <p>আপনি যদি এই কোড অনুরোধ না করে থাকেন, তাহলে অনুগ্রহ করে এই ইমেলটি উপেক্ষা করুন।</p>
