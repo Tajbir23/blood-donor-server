@@ -9,6 +9,9 @@ export const tempStoreUser = new Map<string, any>()
 
 export const saveUser = async (data: any) => {
     const user = await userModel.create(data)
+    user.emailVerified = true
+    await user.save
+    await tempStoreUser.delete(user?.email)
     addActiveUser(user._id)
     const token = generateJwt(user.phone, user._id, user.role)
     return {user, token}
