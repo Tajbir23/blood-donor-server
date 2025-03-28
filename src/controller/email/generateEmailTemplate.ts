@@ -1,11 +1,12 @@
 // Define email template types
-export type EmailType = 'otp' | 'support' | 'bloodRequest';
+export type EmailType = 'otp' | 'support' | 'bloodRequest' | 'verifyEmail';
 
 // Function to generate dynamic HTML content based on template type
 const generateEmailTemplate = (type: EmailType, data: any): string => {
-    console.log(type, data);
+    console.log("generate email template",type, data);
     switch (type) {
         case 'otp':
+        case 'verifyEmail':
             return `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
                     <div style="text-align: center; padding: 10px; background-color: #f44336; color: white;">

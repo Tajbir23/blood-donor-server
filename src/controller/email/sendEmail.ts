@@ -26,7 +26,7 @@ const getDefaultSubject = (type: EmailType): string => {
 
 const sendEmail = async (data : ResponseEmailType): Promise<ResponseEmailMessage> => {
     const { email, subject, templateType, templateData } = data;
-    
+    console.log(data)
 
     // Use provided subject or get default based on template type
     const emailSubject = subject || getDefaultSubject(templateType as EmailType);
@@ -49,7 +49,7 @@ const sendEmail = async (data : ResponseEmailType): Promise<ResponseEmailMessage
         to: email,                    // List of receivers
         subject: emailSubject,        // Dynamic subject based on template type
         html: htmlContent,            // HTML body
-        text: templateData || 'অনুগ্রহ করে এই ইমেইলটি একটি HTML-সামঞ্জস্যপূর্ণ ইমেইল ক্লায়েন্টে দেখুন' // Plain text fallback
+        text: (templateType === "otp" || templateType === "verifyEmail") ? templateData?.otp : templateData?.message
     };
 
     try {

@@ -2,7 +2,8 @@ import sendEmail from "../email/sendEmail";
 
 export const otpMap = new Map<string, string>()
 
-export const generateOTP = (email: string) => {
+export const generateOTP = async(email: string) => {
+    otpMap.delete(email)
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpMap.set(email, otp)
     return otp
