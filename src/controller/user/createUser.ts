@@ -3,6 +3,7 @@ import encryptPass from "../../handler/validation/encryptPass";
 import userModel from "../../models/user/userSchema";
 import generateJwt from "../../handler/validation/generateJwt";
 import addActiveUser from "../../handler/user/addActiveUser";
+import { generateOTP } from "./verifyEmail";
 
 const createUser = async (req: Request, res: Response): Promise<void> => {
     const data = JSON.parse(req.body.userData)
@@ -19,6 +20,7 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
         
         const token = generateJwt(user.phone, user._id, user.role)
         
+        await generateOTP(user.email)
         // Set cookie with minimal options
         res.cookie('token', token,{
             httpOnly: true,
