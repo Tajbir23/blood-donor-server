@@ -17,11 +17,11 @@ const userSchema = new Schema<UserType>({
     role: {
         type: String,
         required: true,
-        enum: ['user', 'admin', 'superAdmin', 'moderator', 'associationSuperAdmin', 'associationModerator', 'associationAdmin']
+        enum: ['user', 'admin', 'superAdmin', 'moderator', 'organizationSuperAdmin', 'organizationModerator', 'organizationAdmin']
     },
-    associationId: {
-        type: Schema.Types.ObjectId,
-        ref: 'Association',
+    organizationId: {
+        type: [Schema.Types.ObjectId],
+        ref: 'Organization',
     },
     password: {
         type: String,

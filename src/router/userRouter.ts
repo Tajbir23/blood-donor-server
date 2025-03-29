@@ -8,6 +8,7 @@ import logoutUser from "../controller/user/logoutUser";
 import verifyOtp from "../controller/user/verifyOtp";
 import resendOtp from "../controller/user/resendOtp";
 import forgotPassword from "../controller/user/forgotPassword";
+import me from "../controller/user/me";
 
 
 const userRouter = Router();
@@ -18,4 +19,5 @@ userRouter.get("/logout", verifyJwt, logoutUser)
 userRouter.post("/verify-otp", loginLimiter, verifyOtp)
 userRouter.post('/resend-otp', loginLimiter, resendOtp)
 userRouter.post('/forgot-password', forgotPassword)
+userRouter.get('/me', verifyJwt, me)
 export default userRouter;

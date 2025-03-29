@@ -2,23 +2,23 @@ import cron from 'node-cron';
 import { createLogger } from '../utils/logger';
 
 // Import the correct models
-import associationModel from '../models/association/associationSchema';
+import organizationModel from '../models/organization/organizationSchema';
 import userModel from '../models/user/userSchema';
 
 const logger = createLogger('association-check-cron');
 
 // Function to check associations and ban those with insufficient members
-const checkAssociations = async (): Promise<void> => {
-  console.log("checkAssociations")
+const checkOrganization = async (): Promise<void> => {
+  console.log("checkOrganization")
   try {
-    logger.info('Starting association member check');
+    logger.info('Starting organization member check');
     
     // Get date 3 days ago for comparison
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
     // Find associations created more than 3 days ago
-    const associations = await associationModel.find({
+    const associations = await organizationModel.find({
       createdAt: { $lt: threeDaysAgo },
       isBanned: false // Only check non-banned associations
     });
@@ -38,7 +38,7 @@ const checkAssociations = async (): Promise<void> => {
         logger.info(`Association ${association._id} (${association.organizationName}) has only ${memberCount} members after 3 days. Banning.`);
         
         // Update the association to mark it as banned
-        await associationModel.findByIdAndUpdate(
+        await organizationModel.findByIdAndUpdate(
           association._id,
           {
             isBanned: true,
@@ -58,14 +58,14 @@ const checkAssociations = async (): Promise<void> => {
 };
 
 // Schedule cron job to run every day at midnight (12 AM)
-const scheduleAssociationCheck = (): void => {
-  logger.info('Scheduling association check cron job for midnight');
+const scheduleOrganizationCheck = (): void => {
+  logger.info('Scheduling organization check cron job for midnight');
   
   // '0 0 * * *' = Run at 00:00 (midnight) every day
   cron.schedule('0 0 * * *', async () => {
-    logger.info('Running scheduled association check');
-    await checkAssociations();
+    logger.info('Running scheduled organization check');
+    await checkOrganization();
   });
 };
 
-export default scheduleAssociationCheck; 
+export default scheduleOrganizationCheck; 

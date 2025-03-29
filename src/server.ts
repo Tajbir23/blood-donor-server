@@ -9,7 +9,7 @@ import connection from './config/db'
 import { apiLimiter } from './config/limiter'
 import router from './router/router'
 import detectVpn from './handler/validation/detectVpn'
-import scheduleAssociationCheck from './cron/associationCheck'
+import scheduleOrganizationCheck from './cron/organizationCheck'
 import morgan from 'morgan'
 import path from 'path'
 const PORT = process.env.PORT || 4000
@@ -73,6 +73,6 @@ app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`)
     
     // Initialize cron jobs
-    scheduleAssociationCheck();
-    console.log('Association check cron job scheduled');
+    scheduleOrganizationCheck();
+    console.log('Organization check cron job scheduled');
 })

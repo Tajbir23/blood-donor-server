@@ -1,8 +1,12 @@
 import { Schema } from "mongoose";
 
-interface associationType {
+interface organizationType {
     _id: Schema.Types.ObjectId;
     // প্রতিষ্ঠান সম্পর্কিত তথ্য
+    owner: Schema.Types.ObjectId;
+    admins: Schema.Types.ObjectId[];
+    superAdmins: Schema.Types.ObjectId[];
+    moderators: Schema.Types.ObjectId[];
     organizationName: string;
     organizationType: string;
     establishmentYear: string;
@@ -34,9 +38,6 @@ interface associationType {
     logoImage: File | null;
     logoImageUrl: string;
 
-    // অ্যাকাউন্ট নিরাপত্তা
-    password: string;
-    confirmPassword: string;
 
     // শর্তাবলী
     agreedToTerms: boolean;
@@ -47,4 +48,4 @@ interface associationType {
     updatedAt?: string;
 }
 
-export default associationType;
+export default organizationType;

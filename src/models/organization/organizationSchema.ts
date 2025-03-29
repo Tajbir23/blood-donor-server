@@ -1,10 +1,29 @@
 import { model, Schema } from "mongoose";
-import AssociationType from "../../types/asssociationType";
+import organizationType from "../../types/organizationType";
 
-const associationSchema = new Schema<AssociationType>({
+
+const organizationSchema = new Schema<organizationType>({
+    owner: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    },
+    admins: {
+        type: [Schema.Types.ObjectId],
+        ref: "User",
+    },
+    superAdmins: {
+        type: [Schema.Types.ObjectId],
+        ref: "User",
+    },
+    moderators: {
+        type: [Schema.Types.ObjectId],
+        ref: "User",
+    },
     organizationName: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     organizationType: {
         type: String,
@@ -16,11 +35,9 @@ const associationSchema = new Schema<AssociationType>({
     },
     registrationNumber: {
         type: String,
-        required: true
     },
     website: {
         type: String,
-        required: true
     },
     description: {
         type: String,
@@ -78,14 +95,6 @@ const associationSchema = new Schema<AssociationType>({
         type: String,
         required: true
     },
-    password: {
-        type: String,
-        required: true
-    },
-    confirmPassword: {
-        type: String,
-        required: true
-    },
     isBanned: {
         type: Boolean,
         default: false
@@ -101,5 +110,5 @@ const associationSchema = new Schema<AssociationType>({
 
 }, { timestamps: true})
 
-const associationModel = model<AssociationType>("Association", associationSchema)
-export default associationModel
+const organizationModel = model<organizationType>("Organization", organizationSchema)
+export default organizationModel

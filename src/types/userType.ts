@@ -9,7 +9,7 @@ interface UserType {
     role: string;
     phone: string;
     password: string;
-    associationId: Schema.Types.ObjectId;
+    organizationId?: Schema.Types.ObjectId[];
     birthDate: string;
     bloodGroup: string;
     gender: string;
