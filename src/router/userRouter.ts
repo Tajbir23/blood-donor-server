@@ -12,10 +12,10 @@ import forgotPassword from "../controller/user/forgotPassword";
 
 const userRouter = Router();
 
-userRouter.post('/register', loginLimiter, imageUpload, createUser)
+userRouter.post('/register', imageUpload, createUser)
 userRouter.post('/login', loginLimiter, loginUser)
 userRouter.get("/logout", verifyJwt, logoutUser)
 userRouter.post("/verify-otp", loginLimiter, verifyOtp)
 userRouter.post('/resend-otp', loginLimiter, resendOtp)
-userRouter.post('/forgot-password', loginLimiter, forgotPassword)
+userRouter.post('/forgot-password', forgotPassword)
 export default userRouter;

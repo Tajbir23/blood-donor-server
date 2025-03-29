@@ -39,6 +39,16 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
         data.password = encryptedPassword
 
         await sendOtp(data?.email)
+        const checkUniqueEmail = await userModel.findOne({email: data?.email})
+        const checkUniquePhone = await userModel.findOne({phone: data?.phone})
+        if(checkUniqueEmail){
+            res.status(400).json({success: false, message: "Email already exists"})
+            return;
+        }
+        if(checkUniquePhone){
+            res.status(400).json({success: false, message: "Phone number already exists"})
+            return;
+        }
         tempStoreUser.set(data?.email, data)
 
         
