@@ -1,11 +1,12 @@
 import { Router } from "express";
 import registerOrg from "../controller/organization/registerOrg";
 import verifyJwt from "../handler/validation/verifyJwt";
-import imageUpload from "../handler/fileUpload/imageUpload";
+import { createImageUpload } from "../handler/fileUpload/imageUpload";
 
 const organizationRouter = Router();
 
-organizationRouter.post('/register', verifyJwt, imageUpload, registerOrg)
+const organizationLogoUpload = createImageUpload('organization')
+organizationRouter.post('/register', verifyJwt, organizationLogoUpload, registerOrg)
 
 export default organizationRouter;
 
