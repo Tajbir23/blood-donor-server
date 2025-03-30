@@ -10,7 +10,11 @@ interface UserRequest extends Request {
 const me = async (req: Request, res: Response): Promise<void> => {
     try {
         const userRequest = req as UserRequest;
-        const user = await userModel.findById(userRequest.user._id).select('-password')
+        const user = await userModel.findById(userRequest.user._id)
+            .select('-password')
+            .populate({
+                path: 'organizationId',
+            });
         if (!user) {
             res.status(404).json({ success: false, message: 'User not found' })
             return;

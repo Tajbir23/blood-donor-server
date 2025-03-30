@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import organizationModel from "../../models/organization/organizationSchema";
+import userModel from "../../models/user/userSchema";
 
 interface UserRequest extends Request {
     user: {

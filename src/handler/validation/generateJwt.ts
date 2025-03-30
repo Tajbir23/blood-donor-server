@@ -6,7 +6,7 @@ const generateJwt = (phone: string, _id: string, role: string) => {
         role
     }
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: '1h' })
+    const token = jwt.sign(payload, process.env.JWT_SECRET as string, { expiresIn: '24h' })
     
     return token
 }
