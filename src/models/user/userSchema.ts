@@ -17,7 +17,7 @@ const userSchema = new Schema<UserType>({
     role: {
         type: String,
         required: true,
-        enum: ['user', 'admin', 'superAdmin', 'moderator', 'organizationSuperAdmin', 'organizationModerator', 'organizationAdmin']
+        enum: ['user', 'admin', 'superAdmin', 'moderator']
     },
     organizationId: {
         type: [Schema.Types.ObjectId],

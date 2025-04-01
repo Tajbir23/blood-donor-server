@@ -48,4 +48,13 @@ interface organizationType {
     updatedAt?: string;
 }
 
+export interface orJoinRequestType {
+    _id: Schema.Types.ObjectId;
+    organizationId: Schema.Types.ObjectId;
+    userId: Schema.Types.ObjectId;
+    status: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 export default organizationType;
