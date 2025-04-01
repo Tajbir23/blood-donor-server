@@ -10,6 +10,7 @@ import { apiLimiter } from './config/limiter'
 import router from './router/router'
 import detectVpn from './handler/validation/detectVpn'
 import scheduleOrganizationCheck from './cron/organizationCheck'
+import scheduleDonationReminder from './cron/donationReminder'
 import morgan from 'morgan'
 import path from 'path'
 const PORT = process.env.PORT || 4000
@@ -75,4 +76,6 @@ app.listen(PORT, () => {
     // Initialize cron jobs
     scheduleOrganizationCheck();
     console.log('Organization check cron job scheduled');
+    scheduleDonationReminder();
+    console.log('Donation reminder cron job scheduled');
 })

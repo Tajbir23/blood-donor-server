@@ -15,7 +15,7 @@ const organizationLogoUpload = createImageUpload('organization')
 organizationRouter.post('/register', verifyJwt, organizationLogoUpload, registerOrg)
 organizationRouter.get('/my_organizations', verifyJwt, myOrganizations)
 organizationRouter.get('/organizations', allOrganizations)
-organizationRouter.post('/join_request', verifyJwt, orgJoinRequest)
+organizationRouter.post('/join_request/:organizationId', verifyJwt, orgJoinRequest)
 
 // Add routes for organization management, such as updating organization details, deleting organization, etc.
 organizationRouter.post('/administrator/manage_join_request/:organizationId', verifyJwt, verifyOrganizationAdmin, manageOrgJoinReq)

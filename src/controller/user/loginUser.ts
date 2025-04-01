@@ -31,7 +31,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
                 res.status(200).json({success: true, message: "Login successful", user});
                 return;
             } else {
-                res.status(401).json({message: "পাসওয়ার্ড ভুল হয়েছে"});
+                res.status(403).json({message: "পাসওয়ার্ড ভুল হয়েছে"});
                 return;
             }
         } else {

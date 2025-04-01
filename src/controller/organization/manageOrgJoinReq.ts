@@ -23,6 +23,7 @@ const manageOrgJoinReq = async (req: Request, res: Response): Promise<void> => {
 
             
             user.organizationId.push(organizationId as unknown as mongoose.Schema.Types.ObjectId);
+            user.isVerified = true;
             await user.save();
             
             res.status(200).json({ message: "Organization join request accepted" });

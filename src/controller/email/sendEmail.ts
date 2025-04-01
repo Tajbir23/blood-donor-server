@@ -16,6 +16,12 @@ const getDefaultSubject = (type: EmailType): string => {
             return 'ব্লাড ডোনার সাপোর্ট থেকে প্রতিক্রিয়া';
         case 'bloodRequest':
             return 'জরুরী: রক্তদানের অনুরোধ';
+        case 'verifyEmail':
+            return 'ইমেইল যাচাইকরণ';
+        case 'forgot-password':
+            return 'আপনার পাসওয়ার্ড রিসেট করা হয়েছে';
+        case 'remindDonation':
+            return 'আপনার রক্তদানের সময় হয়েছে - জীবন বাঁচাতে সহায়তা করুন';
         default:
             return 'ব্লাড ডোনার থেকে বার্তা';
     }

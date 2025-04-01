@@ -16,7 +16,6 @@ const allOrganizations = async (req: Request, res: Response) => {
     }
     const organizations = await organizationModel.find(query).skip(startIndex).limit(limit);
     const totalOrganizations = await organizationModel.countDocuments(query);
-    console.log(organizations)
     res.status(200).json( {organizations, totalOrganizations});
 }
 
