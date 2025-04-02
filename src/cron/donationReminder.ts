@@ -55,7 +55,7 @@ const checkDonationDates = async (): Promise<void> => {
             name: user.fullName,
             isNewDonor: isNewDonor ? 'true' : 'false',
             donationLink: `${process.env.FRONTEND_URL}/blood-donation`,
-            updateLink: `${process.env.FRONTEND_URL}/profile`
+            updateLink: `${process.env.FRONTEND_URL}/update_last_donation`
           }
         });
         
