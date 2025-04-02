@@ -13,39 +13,20 @@ const checkDonationDates = async (): Promise<void> => {
     // Current date for comparison
     const currentDate = new Date();
     
-    // Two separate queries for different user groups:
-    
     // 1. Users who have donated before but not in the last 4 months
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setMonth(currentDate.getMonth() - 4);
     const fourMonthsAgoStr = fourMonthsAgo.toISOString().split('T')[0];
     
-    const regularsQuery = {
-      isActive: true,
-      lastDonationDate: { $ne: null, $lt: fourMonthsAgoStr }
-    };
-    
-    // 2. Users with no donation date recorded
-    // For these users, we only want to send reminders every 10 days
-    // We'll check if they've received a reminder in the last 10 days
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(currentDate.getDate() - 10);
-    
-    const newUsersQuery = {
-      isActive: true,
-      lastDonationDate: null,
-      // To simulate the 10-day interval, we'll only include users who:
-      // a) Never got a reminder email OR
-      // b) Got their last reminder more than 10 days ago
-      $or: [
-        { lastReminderSent: { $exists: false } },
-        { lastReminderSent: { $lt: tenDaysAgo } }
-      ]
-    };
-    
-    // Combine both queries with $or
+    // Find users who either:
+    // 1. Have donated before but not in the last 4 months
+    // 2. Have never donated (lastDonationDate is null)
     const users = await userModel.find({
-      $or: [regularsQuery, newUsersQuery]
+      isActive: true,
+      $or: [
+        { lastDonationDate: null },
+        { lastDonationDate: { $ne: null, $lt: fourMonthsAgoStr } }
+      ]
     });
     
     logger.info(`Found ${users.length} users eligible for donation reminders`);
@@ -86,11 +67,6 @@ const checkDonationDates = async (): Promise<void> => {
             regularDonorReminders++;
           }
           
-          // Update the lastReminderSent date for this user
-          await userModel.findByIdAndUpdate(user._id, {
-            lastReminderSent: new Date()
-          });
-          
           logger.info(`Sent donation reminder to ${user.email} (${isNewDonor ? 'new donor' : 'regular donor'})`);
         } else {
           logger.error(`Failed to send donation reminder to ${user.email}: ${result.message}`);
@@ -106,12 +82,12 @@ const checkDonationDates = async (): Promise<void> => {
   }
 };
 
-// Schedule cron job to run every day at 9 AM
+// Schedule cron job to run every 10 days at 9 AM
 const scheduleDonationReminder = (): void => {
-  logger.info('Scheduling donation reminder cron job for 9 AM daily');
+  logger.info('Scheduling donation reminder cron job for every 10 days at 9 AM');
   
-  // '0 9 * * *' = Run at 9:00 AM every day
-  cron.schedule('0 9 * * *', async () => {
+  // '0 9 */10 * *' = Run at 9:00 AM every 10 days
+  cron.schedule('0 9 */10 * *', async () => {
     logger.info('Running scheduled donation reminder check');
     await checkDonationDates();
   });
