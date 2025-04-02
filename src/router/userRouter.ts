@@ -9,6 +9,7 @@ import verifyOtp from "../controller/user/verifyOtp";
 import resendOtp from "../controller/user/resendOtp";
 import forgotPassword from "../controller/user/forgotPassword";
 import me from "../controller/user/me";
+import updateLastDonation from "../controller/user/updateLastDonation";
 
 
 const userRouter = Router();
@@ -21,4 +22,5 @@ userRouter.post("/verify-otp", loginLimiter, verifyOtp)
 userRouter.post('/resend-otp', loginLimiter, resendOtp)
 userRouter.post('/forgot-password', forgotPassword)
 userRouter.get('/me', verifyJwt, me)
+userRouter.post('/update-last-donation', verifyJwt, updateLastDonation)
 export default userRouter;

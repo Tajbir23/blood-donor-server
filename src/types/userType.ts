@@ -14,6 +14,7 @@ interface UserType {
     bloodGroup: string;
     gender: string;
     lastDonationDate: string;
+    totalDonationCount: number;
     canDonate: boolean;
     nextDonationDate: string;
     districtId: string;

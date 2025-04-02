@@ -4,14 +4,13 @@ import userModel from "../../models/user/userSchema";
 import mongoose from "mongoose";
 
 const manageOrgJoinReq = async (req: Request, res: Response): Promise<void> => {
-    const userId = (req as any).user._id;
     const { organizationId } = req.params;
     const {orgJoinRequestId, status} = req.body;
 
     try {
-        await orgJoinRequestModel.findByIdAndUpdate(orgJoinRequestId, {status}, {new: true});
+        const data = await orgJoinRequestModel.findByIdAndUpdate(orgJoinRequestId, {status}, {new: true});
         if(status === 'accepted'){
-            const user = await userModel.findById(userId);
+            const user = await userModel.findById(data?.userId);
             if (!user) {
                 res.status(404).json({ message: "User not found" });
                 return;

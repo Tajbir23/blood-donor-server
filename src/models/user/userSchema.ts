@@ -50,6 +50,10 @@ const userSchema = new Schema<UserType>({
         type: String,
         default: null
     },
+    totalDonationCount: { 
+        type: Number,
+        default: 0
+    },
     canDonate: { 
         type: Boolean, 
         default: true 
