@@ -21,7 +21,9 @@ const getDefaultSubject = (type: EmailType): string => {
         case 'forgot-password':
             return 'আপনার পাসওয়ার্ড রিসেট করা হয়েছে';
         case 'remindDonation':
-            return 'আপনার রক্তদানের সময় হয়েছে - জীবন বাঁচাতে সহায়তা করুন';
+            return 'আপনার রক্তদানের সময় হয়েছে - জীবন বাঁচাতে সহায়তা করুন';
+        case 'nextDonationReminder':
+            return 'আপনার পরবর্তী রক্তদান - সুরক্ষিত থাকুন এবং সতর্ক হোন';
         default:
             return 'ব্লাড ডোনার থেকে বার্তা';
     }

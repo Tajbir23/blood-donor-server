@@ -29,3 +29,12 @@ export const loginLimiter = rateLimit({
         res.status(429).json({ error: 'Too many login attempts, please try again after an hour' })
     }
 })
+
+export const bloodRequestLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 100, // Limit each IP to 1 request per hour
+    message: { error: 'আপনি ইতিমধ্যে একটি রক্তের অনুরোধ করেছেন। অনুগ্রহ করে ১ ঘন্টা পরে আবার চেষ্টা করুন।', success: false },
+    standardHeaders: true,
+    legacyHeaders: false,
+})
+

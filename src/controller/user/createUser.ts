@@ -8,7 +8,19 @@ import sendOtp from "./sendOtp";
 export const tempStoreUser = new Map<string, any>()
 
 export const saveUser = async (data: any) => {
-    const user = await userModel.create(data)
+    const { latitude, longitude, ...restData } = data;
+
+    const lat = parseFloat(latitude)
+    const long = parseFloat(longitude)
+    
+    const user = await userModel.create({
+        ...restData,
+        location: {
+            type: 'Point',
+            coordinates: [long, lat]
+        }
+    })
+
     user.emailVerified = true
     await user.save
     await tempStoreUser.delete(user?.email)

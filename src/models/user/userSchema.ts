@@ -62,6 +62,10 @@ const userSchema = new Schema<UserType>({
         type: String,
         default: null
     },
+    badges: {
+        type: [String],
+        default: []
+    },
     districtId: { 
         type: String, 
         required: true 
@@ -95,11 +99,27 @@ const userSchema = new Schema<UserType>({
         type: Number,
         default: 0
     },
+    isBanned: {
+        type: Boolean,
+        default: false
+    },
     latitude: {
         type: Number
     },
     longitude: {
         type: Number
+    },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'], 
+            default: 'Point' 
+        },
+        coordinates: {
+            type: [Number], 
+            required: true, 
+            index: '2dsphere' // ✅ Ensure geospatial index
+        }
     },
     fingerPrint: {
         visitorId: { type: String, },
@@ -129,6 +149,8 @@ const userSchema = new Schema<UserType>({
 }, { 
     timestamps: true 
 });
+
+userSchema.index({ location: '2dsphere' });
 
 const userModel = model<UserType>("User", userSchema)
 export default userModel

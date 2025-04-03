@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import userModel from "../../models/user/userSchema";
 import donationHistoryModel from "../../models/user/donationHistorySchema";
+import sendEmail from "../email/sendEmail";
+import { createLogger } from "../../utils/logger";
 
+const logger = createLogger("updateLastDonation");
 const updateLastDonation = async (req: Request, res: Response): Promise<void> => {
     const userId = (req as any).user._id;
     const { lastDonation, recipient, recipientName } = req.body;
@@ -31,13 +34,48 @@ const updateLastDonation = async (req: Request, res: Response): Promise<void> =>
         nextDonation.setMonth(nextDonation.getMonth() + 4);
 
         // ইউজারের lastDonationDate আপডেট করা হচ্ছে
-        const updatedUser = await userModel.findByIdAndUpdate(userId, 
-            { lastDonationDate: lastDonation, nextDonationDate: nextDonation, totalDonationCount: user.totalDonationCount + 1 }, 
-            { new: true });
+        const newDonationCount = user.totalDonationCount + 1;
+
+        const assignBadge = (donationCount: number): string | null => {
+            if (donationCount === 1) return "প্রথম রক্তদান";
+            if (donationCount === 5) return "নিয়মিত দাতা";
+            if (donationCount === 10) return "জীবন রক্ষাকারী";
+            return null;  // No new badge
+        };
+        
+        const newBadge = assignBadge(newDonationCount);
+        
+        const updatedUser = await userModel.findByIdAndUpdate(
+            userId,
+            {
+                lastDonationDate: lastDonation,
+                nextDonationDate: nextDonation,
+                totalDonationCount: newDonationCount,
+                ...(newBadge && { $push: { badges: newBadge } })
+            },
+            { new: true }
+        );
 
         const donationHistory = await donationHistoryModel.create({ userId, donationDate: lastDonation, recipient: recipient ? recipient : "উল্লেখ নেই", recipientName: recipientName ? recipientName : "উল্লেখ নেই" });
 
         await donationHistory.save();
+
+        const result = await sendEmail({
+            email: user.email,
+            subject: "আপনার পরবর্তী রক্তদানের তারিখ",
+            templateType: "nextDonationReminder",
+            templateData: {
+                name: user.fullName,
+                nextDonationDate: nextDonation.toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' }),
+                donationLink: `${process.env.FRONTEND_URL}/blood-donation`,
+            }
+        });
+
+        if (result.success) {
+            logger.info(`Sent next donation reminder to ${user.email} ${result.message} `);
+        } else {
+            logger.error(`Failed to send next donation reminder to ${user.email}: ${result.message}`);
+        }
 
         res.status(200).json({ success: true, message: "শেষ রক্তদান আপডেট হয়েছে", user: updatedUser });
 

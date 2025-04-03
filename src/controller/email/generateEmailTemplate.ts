@@ -1,5 +1,5 @@
 // Define email template types
-export type EmailType = 'otp' | 'support' | 'bloodRequest' | 'verifyEmail' | 'forgot-password' | 'remindDonation';
+export type EmailType = 'otp' | 'support' | 'bloodRequest' | 'verifyEmail' | 'forgot-password' | 'remindDonation' | 'nextDonationReminder';
 
 // Function to generate dynamic HTML content based on template type
 const generateEmailTemplate = (type: EmailType, data: any): string => {
@@ -70,13 +70,40 @@ const generateEmailTemplate = (type: EmailType, data: any): string => {
                         <h3>রক্তদান অনুরোধ</h3>
                         <p>প্রিয় ${data?.name},</p>
                         <p>আমাদের কাছে <strong>${data.bloodGroup}</strong> রক্তের একটি জরুরী অনুরোধ এসেছে:</p>
-                        <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0;">
-                            <p><strong>হাসপাতাল:</strong> ${data.hospital}</p>
-                            <p><strong>ঠিকানা:</strong> ${data.address}</p>
-                            <p><strong>যোগাযোগ:</strong> ${data.contact}</p>
-                            <p><strong>প্রয়োজনীয় সময়:</strong> ${data.requiredBy}</p>
+                        
+                        <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-left: 4px solid #f44336;">
+                            <h4 style="margin-top: 0;">রোগীর তথ্য:</h4>
+                            <p><strong>নাম:</strong> ${data.patientName || 'অজানা'}</p>
+                            ${data.patientAge ? `<p><strong>বয়স:</strong> ${data.patientAge} বছর</p>` : ''}
+                            ${data.patientGender ? `<p><strong>লিঙ্গ:</strong> ${data.patientGender === 'male' ? 'পুরুষ' : data.patientGender === 'female' ? 'মহিলা' : 'অন্যান্য'}</p>` : ''}
+                            ${data.patientProblem ? `<p><strong>সমস্যা:</strong> ${data.patientProblem}</p>` : ''}
+                            <p><strong>রক্তের গ্রুপ:</strong> ${data.bloodGroup}</p>
+                            ${data.bloodUnits ? `<p><strong>প্রয়োজনীয় ইউনিট:</strong> ${data.bloodUnits}</p>` : ''}
+                            ${data.reason ? `<p><strong>কারণ:</strong> ${data.reason}</p>` : ''}
                         </div>
-                        <p>আপনার রক্তদান একটি জীবন বাঁচাতে পারে। আপনি যদি রক্তদান করতে পারেন, তাহলে অনুগ্রহ করে এই ইমেইলের উত্তর দিন অথবা প্রদত্ত নম্বরে যোগাযোগ করুন।</p>
+                        
+                        <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-left: 4px solid #2196F3;">
+                            <h4 style="margin-top: 0;">হাসপাতালের তথ্য:</h4>
+                            <p><strong>হাসপাতাল:</strong> ${data.hospital}</p>
+                            ${data.hospitalWard ? `<p><strong>ওয়ার্ড:</strong> ${data.hospitalWard}</p>` : ''}
+                            <p><strong>ঠিকানা:</strong> ${data.address}</p>
+                            <p><strong>প্রয়োজনীয় তারিখ:</strong> ${data.requiredDate || 'যত দ্রুত সম্ভব'}</p>
+                            ${data.requiredTime ? `<p><strong>প্রয়োজনীয় সময়:</strong> ${data.requiredTime}</p>` : ''}
+                        </div>
+                        
+                        <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-left: 4px solid #4CAF50;">
+                            <h4 style="margin-top: 0;">যোগাযোগের তথ্য:</h4>
+                            <p><strong>প্রাথমিক যোগাযোগ:</strong> ${data.contact}</p>
+                            ${data.alternativeContact ? `<p><strong>বিকল্প যোগাযোগ:</strong> ${data.alternativeContact}</p>` : ''}
+                        </div>
+                        
+                        <p style="font-weight: bold; color: #f44336;">আপনার রক্তদান একটি জীবন বাঁচাতে পারে। আপনি যদি রক্তদান করতে পারেন, তাহলে অনুগ্রহ করে উল্লিখিত নম্বরে যোগাযোগ করুন।</p>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a href="tel:${data.contact}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-right: 10px;">কল করুন</a>
+                            <a href="${data.responseLink || 'https://blooddonar.org/respond'}" style="background-color: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">সাড়া দিন</a>
+                        </div>
+                        
                         <p>আপনার দয়া এবং উদারতার জন্য ধন্যবাদ।</p>
                         <p>শুভেচ্ছান্তে,<br>ব্লাড ডোনার টিম</p>
                     </div>
@@ -112,7 +139,7 @@ const generateEmailTemplate = (type: EmailType, data: any): string => {
                         <p>আপনার রক্তদান জীবন বাঁচাতে সাহায্য করে। আপনি যদি আগ্রহী হন, তাহলে আমাদের অ্যাপে লগইন করে রক্তদান করার সময় নির্ধারণ করুন।</p>
                         
                         <div style="text-align: center; margin: 20px 0;">
-                            <a href="${data.donationLink || 'https://blooddonar.org/donate'}" style="background-color: #f44336; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">${data.isNewDonor === 'true' ? 'আমার প্রথম রক্তদান সময়সূচী তৈরি করুন' : 'রক্তদান সময়সূচী তৈরি করুন'}</a>
+                            <a href="${data.donationLink || 'https://blooddonar.org/donate'}" style="background-color: #f44336; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">আমার প্রথম রক্তদান সময়সূচী তৈরি করুন</a>
                         </div>
                         
                         <div style="border-top: 1px solid #e0e0e0; margin-top: 20px; padding-top: 20px;">
@@ -123,6 +150,53 @@ const generateEmailTemplate = (type: EmailType, data: any): string => {
                         </div>
                         
                         <p>আপনার দয়া এবং সহযোগিতার জন্য ধন্যবাদ।</p>
+                        <p>শুভেচ্ছান্তে,<br>ব্লাড ডোনার টিম</p>
+                    </div>
+                </div>
+            `;
+            
+        case 'nextDonationReminder':
+            return `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                    <div style="text-align: center; padding: 10px; background-color: #f44336; color: white;">
+                        <h2>আপনার পরবর্তী রক্তদান - সুরক্ষিত থাকুন</h2>
+                    </div>
+                    <div style="padding: 20px;">
+                        <h3>রক্তদান করার জন্য প্রস্তুতি নিন</h3>
+                        <p>প্রিয় ${data.name},</p>
+                        <p>আপনার পরবর্তী রক্তদান তারিখ (${data.nextDonationDate || 'শীঘ্রই'}) আসছে। আপনি আবার রক্তদান করে একটি মূল্যবান জীবন বাঁচাতে পারেন!</p>
+                        
+                        <div style="background-color: #fff3cd; padding: 15px; margin: 15px 0; border-left: 4px solid #ffc107;">
+                            <h4 style="color: #856404;">প্রতারণা থেকে সতর্ক থাকুন:</h4>
+                            <ul style="padding-left: 20px;">
+                                <li>কখনোই অপরিচিত ব্যক্তি বা প্রতিষ্ঠানকে অর্থ প্রদান করবেন না</li>
+                                <li>রোগীর পরিবারের সাথে সরাসরি যোগাযোগ করুন</li>
+                                <li>রক্তদানের জন্য কখনো টাকা নেবেন না</li>
+                                <li>আমাদের অফিসিয়াল অ্যাপ ছাড়া অন্য মাধ্যমে ব্যক্তিগত তথ্য শেয়ার করবেন না</li>
+                                <li>বিশ্বস্ত হাসপাতাল বা ব্লাড ব্যাংকে রক্তদান করুন</li>
+                                <li>সন্দেহজনক অনুরোধ পেলে আমাদের সাথে যোগাযোগ করুন</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background-color: #d4edda; padding: 15px; margin: 15px 0; border-left: 4px solid #28a745;">
+                            <h4 style="color: #155724;">রক্তদানের পরে যত্ন:</h4>
+                            <ul style="padding-left: 20px;">
+                                <li>প্রথম ৪ ঘণ্টা ভারী কাজ এড়িয়ে চলুন</li>
+                                <li>প্রচুর পানি পান করুন</li>
+                                <li>আয়রন সমৃদ্ধ খাবার গ্রহণ করুন (যেমন: পালং শাক, মাংস, ডিম)</li>
+                                <li>রক্তদানের স্থানে ২৪ ঘণ্টা ব্যান্ডেজ রাখুন</li>
+                                <li>কোন অস্বাভাবিক উপসর্গ দেখা দিলে চিকিৎসকের পরামর্শ নিন</li>
+                                <li>আমাদের অ্যাপে আপনার রক্তদানের তথ্য আপডেট করুন</li>
+                            </ul>
+                        </div>
+                        
+                        <p>আপনার রক্তদান তিনটি পর্যন্ত জীবন বাঁচাতে পারে। সকল রক্তদাতাদের জন্য আমাদের গভীর কৃতজ্ঞতা ও শ্রদ্ধা রইল।</p>
+                        
+                        <div style="text-align: center; margin: 20px 0;">
+                            <a href="${data.donationLink || 'https://blooddonar.org/donate'}" style="background-color: #f44336; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">রক্তদান সময়সূচী তৈরি করুন</a>
+                        </div>
+                        
+                        <p>যদি আপনার রক্তদান সম্পর্কে কোন প্রশ্ন থাকে, তাহলে অনুগ্রহ করে আমাদের সাথে যোগাযোগ করুন।</p>
                         <p>শুভেচ্ছান্তে,<br>ব্লাড ডোনার টিম</p>
                     </div>
                 </div>

@@ -17,6 +17,8 @@ interface UserType {
     totalDonationCount: number;
     canDonate: boolean;
     nextDonationDate: string;
+    isBanned: boolean;
+    badges: string[];
     districtId: string;
     thanaId: string;
     address: string;
@@ -28,6 +30,13 @@ interface UserType {
     reportCount: number;
     latitude: number;
     longitude: number;
+    location: {
+        type: {
+            type: string;
+            enum: ['Point'];
+        };
+        coordinates: number[];
+    };
     fingerPrint: FingerprintDataType;
     createdAt: string;
     updatedAt: string;
