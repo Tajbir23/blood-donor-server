@@ -50,7 +50,7 @@ const createImageUpload = (fieldName = 'profileImage') => {
 
                 // Log successful upload and add file path to request
                 if (req.file) {
-                    console.log('File uploaded successfully:', req.file.path);
+                    
                     
                     // Store both the file object and specific paths for easy access
                     res.locals.uploadedFile = req.file;
@@ -58,7 +58,7 @@ const createImageUpload = (fieldName = 'profileImage') => {
                     res.locals.imageFilename = req.file.filename;
                     res.locals.imageUrl = `/uploads/${req.file.filename}`;
                     
-                    console.log('Image URL:', res.locals.imageUrl);
+                    
                 } else {
                     console.log('No file uploaded or file rejected');
                 }

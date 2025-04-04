@@ -9,7 +9,7 @@ const logger = createLogger('association-check-cron');
 
 // Function to check associations and ban those with insufficient members
 const checkOrganization = async (): Promise<void> => {
-  console.log("checkOrganization")
+  
   try {
     logger.info('Starting organization member check');
     

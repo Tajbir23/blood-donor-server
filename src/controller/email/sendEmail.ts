@@ -34,7 +34,7 @@ const getDefaultSubject = (type: EmailType): string => {
 
 const sendEmail = async (data : ResponseEmailType): Promise<ResponseEmailMessage> => {
     const { email, subject, templateType, templateData } = data;
-    console.log(data)
+    
 
     // Use provided subject or get default based on template type
     const emailSubject = subject || getDefaultSubject(templateType as EmailType);
@@ -67,7 +67,6 @@ const sendEmail = async (data : ResponseEmailType): Promise<ResponseEmailMessage
         await transporter.sendMail(mailOptions);
         return { success: true, message: 'ইমেইল সফলভাবে পাঠানো হয়েছে' };
     } catch (error) {
-        console.error('Error sending email:', error);
         return { success: false, message: `ইমেইল পাঠাতে ব্যর্থ হয়েছে: ${error}` };
     }
 };

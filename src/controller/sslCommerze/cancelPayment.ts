@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 
 const cancelPayment = async (req: Request, res: Response) => {
+    console.log("cancelPayment");
     try {
-        // Log the cancelled transaction data
-        console.log("Payment Cancelled Data:", req.body);
-        
+        // Extract transaction ID from the response
         const { tran_id } = req.body;
         
         // TODO: Update donation status in database to "cancelled"
@@ -19,7 +18,6 @@ const cancelPayment = async (req: Request, res: Response) => {
         // Redirect to cancellation page with transaction ID
         return res.redirect(`${process.env.FRONTEND_URL}/donation/cancelled?tran_id=${tran_id}`);
     } catch (err) {
-        console.error("Error processing cancelled payment:", err);
         return res.redirect(`${process.env.FRONTEND_URL}/donation/cancelled?reason=server_error`);
     }
 };

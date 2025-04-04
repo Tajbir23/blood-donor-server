@@ -5,7 +5,7 @@ import { resRegUser } from "./createUser";
 const verifyOtp = async (req: Request, res: Response) => {
     const {email, otp, otpType} = req.body
     const otpData = await otpMap.get(email)
-    console.log("check otp", otpData, otp === otpData)
+    
     if(otpData === otp){
         if(otpType === "register"){
             await resRegUser(email, res)

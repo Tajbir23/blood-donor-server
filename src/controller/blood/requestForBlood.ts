@@ -5,7 +5,7 @@ import sendEmail from "../email/sendEmail"
 
 const requestForBlood = async (req: Request, res: Response) => {
     const data = req.body
-    console.log(data)
+    
     try {
         const bloodRequest = await bloodRequestModel.create(data)
         await bloodRequest.save()
@@ -14,7 +14,7 @@ const requestForBlood = async (req: Request, res: Response) => {
         const longitude = parseFloat(data.longitude)
 
         const donors = await findNearAvailableDonor(latitude, longitude)
-        console.log("donors", donors)
+       
         
         let successCount = 0
         let failedCount = 0

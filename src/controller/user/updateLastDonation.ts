@@ -9,8 +9,7 @@ const updateLastDonation = async (req: Request, res: Response): Promise<void> =>
     const userId = (req as any).user._id;
     const { lastDonation, recipient, recipientName } = req.body;
     
-    console.log(lastDonation, recipient, recipientName);
-    console.log("check last donation", req.body);
+    
     try {
         // ডাটাবেজ থেকে ইউজারের তথ্য আনো
         const user = await userModel.findById(userId);

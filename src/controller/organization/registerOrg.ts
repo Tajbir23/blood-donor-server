@@ -4,7 +4,7 @@ import organizationType from "../../types/organizationType";
 
 const registerOrg = async (req: Request, res: Response) => {
     const organizationData: organizationType = JSON.parse(req.body.organizationData);
-    console.log(req.body)
+    
     const user = (req as any).user
     const imageUrl = res.locals.imageUrl;
 

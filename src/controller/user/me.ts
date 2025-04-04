@@ -19,7 +19,7 @@ const me = async (req: Request, res: Response): Promise<void> => {
             res.status(404).json({ success: false, message: 'User not found' })
             return;
         }
-        console.log(user)
+        
         res.status(200).json({ success: true, user })
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error', error })
