@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.loginLimiter = exports.apiLimiter = void 0;
+exports.bloodRequestLimiter = exports.loginLimiter = exports.apiLimiter = void 0;
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 // Rate limiting for DDoS protection - all API routes
 exports.apiLimiter = (0, express_rate_limit_1.default)({
@@ -32,4 +32,11 @@ exports.loginLimiter = (0, express_rate_limit_1.default)({
     handler: (req, res) => {
         res.status(429).json({ error: 'Too many login attempts, please try again after an hour' });
     }
+});
+exports.bloodRequestLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 100, // Limit each IP to 1 request per hour
+    message: { error: 'আপনি ইতিমধ্যে একটি রক্তের অনুরোধ করেছেন। অনুগ্রহ করে ১ ঘন্টা পরে আবার চেষ্টা করুন।', success: false },
+    standardHeaders: true,
+    legacyHeaders: false,
 });

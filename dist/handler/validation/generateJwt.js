@@ -10,7 +10,7 @@ const generateJwt = (phone, _id, role) => {
         _id,
         role
     };
-    const token = jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+    const token = jsonwebtoken_1.default.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' });
     return token;
 };
 exports.default = generateJwt;

@@ -46,8 +46,10 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const db_1 = __importDefault(require("./config/db"));
 const limiter_1 = require("./config/limiter");
 const router_1 = __importDefault(require("./router/router"));
-const associationCheck_1 = __importDefault(require("./cron/associationCheck"));
+const organizationCheck_1 = __importDefault(require("./cron/organizationCheck"));
+const donationReminder_1 = __importDefault(require("./cron/donationReminder"));
 const morgan_1 = __importDefault(require("morgan"));
+const path_1 = __importDefault(require("path"));
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
 // Basic security with Helmet - helps with many security vulnerabilities including DDoS
@@ -68,6 +70,8 @@ exports.app.use((0, cors_1.default)({
     origin: exports.allowOrigins,
     credentials: true
 }));
+// Set up static file serving for uploads directory
+exports.app.use('/api/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
 // Apply rate limiting to API routes
 exports.app.use('/api/', limiter_1.apiLimiter, router_1.default);
 const setCookies = (req, res, next) => {
@@ -94,6 +98,8 @@ exports.activeUsers = [];
 exports.app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     // Initialize cron jobs
-    (0, associationCheck_1.default)();
-    console.log('Association check cron job scheduled');
+    (0, organizationCheck_1.default)();
+    console.log('Organization check cron job scheduled');
+    (0, donationReminder_1.default)();
+    console.log('Donation reminder cron job scheduled');
 });

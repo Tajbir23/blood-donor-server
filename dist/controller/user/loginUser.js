@@ -31,7 +31,7 @@ const loginUser = async (req, res) => {
                 return;
             }
             else {
-                res.status(401).json({ message: "পাসওয়ার্ড ভুল হয়েছে" });
+                res.status(403).json({ message: "পাসওয়ার্ড ভুল হয়েছে" });
                 return;
             }
         }

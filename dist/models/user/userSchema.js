@@ -7,6 +7,9 @@ const userSchema = new mongoose_1.Schema({
         required: true,
         unique: true
     },
+    emailVerified: {
+        type: Boolean
+    },
     fullName: {
         type: String,
         required: true
@@ -14,11 +17,11 @@ const userSchema = new mongoose_1.Schema({
     role: {
         type: String,
         required: true,
-        enum: ['user', 'admin', 'superAdmin', 'moderator', 'associationSuperAdmin', 'associationModerator', 'associationAdmin']
+        enum: ['user', 'admin', 'superAdmin', 'moderator']
     },
-    associationId: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Association',
+    organizationId: {
+        type: [mongoose_1.Schema.Types.ObjectId],
+        ref: 'Organization',
     },
     password: {
         type: String,
@@ -47,6 +50,10 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         default: null
     },
+    totalDonationCount: {
+        type: Number,
+        default: 0
+    },
     canDonate: {
         type: Boolean,
         default: true
@@ -54,6 +61,10 @@ const userSchema = new mongoose_1.Schema({
     nextDonationDate: {
         type: String,
         default: null
+    },
+    badges: {
+        type: [String],
+        default: []
     },
     districtId: {
         type: String,
@@ -88,11 +99,27 @@ const userSchema = new mongoose_1.Schema({
         type: Number,
         default: 0
     },
+    isBanned: {
+        type: Boolean,
+        default: false
+    },
     latitude: {
         type: Number
     },
     longitude: {
         type: Number
+    },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number],
+            required: true,
+            index: '2dsphere' // ✅ Ensure geospatial index
+        }
     },
     fingerPrint: {
         visitorId: { type: String, },
@@ -122,5 +149,6 @@ const userSchema = new mongoose_1.Schema({
 }, {
     timestamps: true
 });
+userSchema.index({ location: '2dsphere' });
 const userModel = (0, mongoose_1.model)("User", userSchema);
 exports.default = userModel;
