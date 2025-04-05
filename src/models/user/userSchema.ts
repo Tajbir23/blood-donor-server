@@ -47,7 +47,7 @@ const userSchema = new Schema<UserType>({
         enum: ['male', 'female', 'other']
     },
     lastDonationDate: { 
-        type: String,
+        type: Date,
         default: null
     },
     totalDonationCount: { 

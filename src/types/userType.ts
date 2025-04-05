@@ -13,7 +13,7 @@ interface UserType {
     birthDate: string;
     bloodGroup: string;
     gender: string;
-    lastDonationDate: string;
+    lastDonationDate: Date;
     totalDonationCount: number;
     canDonate: boolean;
     nextDonationDate: string;
