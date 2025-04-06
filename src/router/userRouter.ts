@@ -10,6 +10,7 @@ import resendOtp from "../controller/user/resendOtp";
 import forgotPassword from "../controller/user/forgotPassword";
 import me from "../controller/user/me";
 import updateLastDonation from "../controller/user/updateLastDonation";
+import searchBlood from "../controller/blood/searchBlood";
 
 
 const userRouter = Router();
@@ -23,4 +24,5 @@ userRouter.post('/resend-otp', loginLimiter, resendOtp)
 userRouter.post('/forgot-password', forgotPassword)
 userRouter.get('/me', verifyJwt, me)
 userRouter.post('/update-last-donation', verifyJwt, updateLastDonation)
+userRouter.post("/donor/search", searchBlood)
 export default userRouter;

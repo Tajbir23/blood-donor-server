@@ -1,7 +1,6 @@
 import { Request, Response } from "express"
 import bloodRequestModel from "../../models/blood/bloodRequestSchema"
 import findNearAvailableDonor from "../../handler/donor/findNearAvailableDonor"
-import sendEmail from "../email/sendEmail"
 import savePatientDetails from "./savePatientDetails"
 import sendMailToDonor from "../../handler/donor/sendMailToDonor"
 
@@ -15,7 +14,7 @@ const requestForBlood = async (req: Request, res: Response) => {
         const latitude = parseFloat(data.latitude)
         const longitude = parseFloat(data.longitude)
 
-        const donors = await findNearAvailableDonor(latitude, longitude)
+        const donors = await findNearAvailableDonor(latitude, longitude, data.bloodGroup)
        
         
         const seekerLatitude = parseFloat(data.seekerLatitude)

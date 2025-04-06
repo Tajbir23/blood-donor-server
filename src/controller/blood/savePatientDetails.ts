@@ -1,12 +1,13 @@
 import patientDetailsModel from "../../models/blood/patient_detailsSchema"
+import userModel from "../../models/user/userSchema";
 
 const savePatientDetails = async(name: string, email: string, phone: string, districtId: string, thanaId: string, bloodGroup: string, latitude: number, longitude: number) => {
     try {
         // Check if a patient with this email already exists
         const existingPatient = await patientDetailsModel.findOne({ email });
-        
+        const existingUser = await userModel.findOne({ email });
         // Only create and save if the email doesn't exist
-        if (!existingPatient) {
+        if (!existingPatient || !existingUser) {
             const patientDetails = await patientDetailsModel.create({
                 name,
                 email,
@@ -15,11 +16,7 @@ const savePatientDetails = async(name: string, email: string, phone: string, dis
                 thanaId,
                 bloodGroup,
                 location: {
-                    type: {
-                        type: String,
-                        enum: ['Point'],
-                        default: 'Point'
-                    },
+                    type: "Point",
                     coordinates: [longitude, latitude]
                 }
             });
