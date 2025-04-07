@@ -31,7 +31,6 @@ const getDefaultSubject = (type) => {
 // Function to generate dynamic HTML content based on template type
 const sendEmail = async (data) => {
     const { email, subject, templateType, templateData } = data;
-    console.log(data);
     // Use provided subject or get default based on template type
     const emailSubject = subject || getDefaultSubject(templateType);
     // Create a transporter object using the default SMTP transport
@@ -60,7 +59,6 @@ const sendEmail = async (data) => {
         return { success: true, message: 'ইমেইল সফলভাবে পাঠানো হয়েছে' };
     }
     catch (error) {
-        console.error('Error sending email:', error);
         return { success: false, message: `ইমেইল পাঠাতে ব্যর্থ হয়েছে: ${error}` };
     }
 };

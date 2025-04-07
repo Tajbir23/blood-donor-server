@@ -11,7 +11,6 @@ const userSchema_1 = __importDefault(require("../models/user/userSchema"));
 const logger = (0, logger_1.createLogger)('association-check-cron');
 // Function to check associations and ban those with insufficient members
 const checkOrganization = async () => {
-    console.log("checkOrganization");
     try {
         logger.info('Starting organization member check');
         // Get date 3 days ago for comparison

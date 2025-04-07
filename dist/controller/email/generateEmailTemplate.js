@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 // Function to generate dynamic HTML content based on template type
 const generateEmailTemplate = (type, data) => {
-    console.log("generate email template", type, data);
     switch (type) {
         case 'otp':
         case 'verifyEmail':
@@ -55,6 +54,43 @@ const generateEmailTemplate = (type, data) => {
                         <p>${data.message}</p>
                         <p>আপনার যদি আরও কোন প্রশ্ন থাকে, তাহলে অনুগ্রহ করে আমাদের সাথে যোগাযোগ করতে দ্বিধা করবেন না।</p>
                         <p>শুভেচ্ছান্তে,<br>ব্লাড ডোনার সাপোর্ট টিম</p>
+                    </div>
+                </div>
+            `;
+        case 'moneyDonation':
+            return `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+                    <div style="text-align: center; padding: 10px; background-color: #f44336; color: white;">
+                        <h2>অর্থ অনুদানের রসিদ</h2>
+                    </div>
+                    <div style="padding: 20px;">
+                        <h3>অর্থ অনুদান নিশ্চিতকরণ</h3>
+                        <p>প্রিয় ${data.donorName || 'দাতা'},</p>
+                        <p>আপনার অর্থ অনুদান সফলভাবে গৃহীত হয়েছে। আপনার অবদানের জন্য আন্তরিক ধন্যবাদ!</p>
+                        
+                        <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-left: 4px solid #4CAF50;">
+                            <h4 style="margin-top: 0; color: #4CAF50;">অনুদানের বিবরণ:</h4>
+                            <p><strong>লেনদেন আইডি:</strong> ${data.tranId}</p>
+                            <p><strong>পরিমাণ:</strong> ${data.amount || '----'} টাকা</p>
+                            <p><strong>তারিখ:</strong> ${new Date().toLocaleDateString('bn-BD')}</p>
+                        </div>
+                        
+                        <p>${data.message || 'আপনার অনুদান একটি মহৎ উদ্যোগের অংশ। আপনার সহায়তায় আমরা রক্তদাতাদের সহায়তা, প্রশিক্ষণ এবং সচেতনতা কার্যক্রম অব্যাহত রাখতে পারব। একটি জীবন বাঁচাতে আপনার অবদান প্রতিফলিত হবে একটি পরিবারের হাসিতে, একটি মাতার স্বস্তিতে, বা একটি ভবিষ্যতে। শান্তি ও প্রশান্তির এই পথে আপনার সঙ্গী হওয়ার জন্য আপনাকে আন্তরিক কৃতজ্ঞতা জানাই।'}</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${data.invoiceUrl}" style="background-color: #4CAF50; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+                                রসিদ দেখুন/ডাউনলোড করুন
+                            </a>
+                        </div>
+                        
+                        <p>আপনার কোন প্রশ্ন থাকলে, অনুগ্রহ করে আমাদের সাথে যোগাযোগ করতে দ্বিধা করবেন না।</p>
+                        
+                        <p>আবারও ধন্যবাদ আপনার উদারতার জন্য।</p>
+                        <p>শুভেচ্ছান্তে,<br>ব্লাড ডোনার টিম</p>
+                    </div>
+                    <div style="background-color: #f9f9f9; padding: 15px; text-align: center; border-top: 1px solid #e0e0e0; color: #666; font-size: 12px;">
+                        <p>এই ইমেইল স্বয়ংক্রিয়ভাবে তৈরি করা হয়েছে। অনুগ্রহ করে এই ইমেইলের উত্তর দিবেন না।</p>
+                        <p>&copy; ${new Date().getFullYear()} ব্লাড ডোনার। সর্বস্বত্ব সংরক্ষিত।</p>
                     </div>
                 </div>
             `;

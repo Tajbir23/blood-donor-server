@@ -1,16 +1,17 @@
-import { Request, Response } from "express";
-import MoneyDonation from "../../models/donation/moneyDonationSchema";
-
-const getInvoice = async (req: Request, res: Response) => {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const moneyDonationSchema_1 = __importDefault(require("../../models/donation/moneyDonationSchema"));
+const getInvoice = async (req, res) => {
     try {
-    const { tran_id } = req.params;
-    const donation = await MoneyDonation.findOne({ tran_id });
-        
-    if (!donation) {
+        const { tran_id } = req.params;
+        const donation = await moneyDonationSchema_1.default.findOne({ tran_id });
+        if (!donation) {
             res.status(404).json({ message: "অনুদান খুঁজে পাওয়া যায়নি" });
             return;
         }
-        
         // Format date
         const donationDate = new Date(donation.createdAt || donation.tran_date || new Date());
         const formattedDate = donationDate.toLocaleDateString('bn-BD', {
@@ -18,7 +19,6 @@ const getInvoice = async (req: Request, res: Response) => {
             month: 'long',
             day: 'numeric'
         });
-        
         // Generate invoice HTML
         const invoiceHtml = `
         <!DOCTYPE html>
@@ -361,15 +361,14 @@ const getInvoice = async (req: Request, res: Response) => {
         </body>
         </html>
         `;
-        
         // Send HTML response
         res.setHeader('Content-Type', 'text/html');
         res.send(invoiceHtml);
         return;
-    } catch (error) {
+    }
+    catch (error) {
         res.status(500).json({ message: "সার্ভার ত্রুটি", error: error });
         return;
     }
 };
-
-export default getInvoice;
+exports.default = getInvoice;

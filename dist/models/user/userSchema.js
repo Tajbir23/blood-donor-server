@@ -47,7 +47,7 @@ const userSchema = new mongoose_1.Schema({
         enum: ['male', 'female', 'other']
     },
     lastDonationDate: {
-        type: String,
+        type: Date,
         default: null
     },
     totalDonationCount: {

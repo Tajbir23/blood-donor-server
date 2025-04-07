@@ -11,8 +11,6 @@ const logger = (0, logger_1.createLogger)("updateLastDonation");
 const updateLastDonation = async (req, res) => {
     const userId = req.user._id;
     const { lastDonation, recipient, recipientName } = req.body;
-    console.log(lastDonation, recipient, recipientName);
-    console.log("check last donation", req.body);
     try {
         // ডাটাবেজ থেকে ইউজারের তথ্য আনো
         const user = await userSchema_1.default.findById(userId);

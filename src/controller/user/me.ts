@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import userModel from "../../models/user/userSchema";
+import generateJwt from "../../handler/validation/generateJwt";
 
 interface UserRequest extends Request {
     user: {
@@ -19,8 +20,11 @@ const me = async (req: Request, res: Response): Promise<void> => {
             res.status(404).json({ success: false, message: 'User not found' })
             return;
         }
+
+        const token = await generateJwt( user.phone, user._id, user.role )
         
-        res.status(200).json({ success: true, user })
+        res.cookie("token", token, {httpOnly: true, secure: false, sameSite: "lax"});
+        res.status(200).json({ success: true, user})
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error', error })
     }

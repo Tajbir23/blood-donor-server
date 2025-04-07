@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const organizationSchema_1 = __importDefault(require("../../models/organization/organizationSchema"));
 const registerOrg = async (req, res) => {
     const organizationData = JSON.parse(req.body.organizationData);
-    console.log(req.body);
     const user = req.user;
     const imageUrl = res.locals.imageUrl;
     try {
