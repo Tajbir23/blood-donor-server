@@ -11,6 +11,7 @@ import forgotPassword from "../controller/user/forgotPassword";
 import me from "../controller/user/me";
 import updateLastDonation from "../controller/user/updateLastDonation";
 import searchBlood from "../controller/blood/searchBlood";
+import searchDonar from "../controller/user/searchDonar";
 
 
 const userRouter = Router();
@@ -25,4 +26,5 @@ userRouter.post('/forgot-password', forgotPassword)
 userRouter.get('/me', verifyJwt, me)
 userRouter.post('/update-last-donation', verifyJwt, updateLastDonation)
 userRouter.post("/donor/search", searchBlood)
+userRouter.get("/search-users", searchDonar)
 export default userRouter;
