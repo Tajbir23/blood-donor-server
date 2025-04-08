@@ -6,7 +6,6 @@ import paymentRouter from "./paymentRoute";
 import donorLeaderBoardRouter from "./donorLeaderBoard";
 import systemAdminRoute from "./administrator/system/route";
 import orgAdminRouter from "./administrator/organizations/orgAdminRoute";
-import searchDonar from "../controller/user/searchDonar";
 
 
 const router = Router()
