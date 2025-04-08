@@ -1,14 +1,15 @@
 import { Request, Response } from "express";
-import orgJoinRequestModel from "../../models/organization/orgJoinRequestSchema";
-import userModel from "../../models/user/userSchema";
+import orgJoinRequestModel from "../../../../models/organization/orgJoinRequestSchema";
+import userModel from "../../../../models/user/userSchema";
 import mongoose from "mongoose";
 
 const manageOrgJoinReq = async (req: Request, res: Response): Promise<void> => {
     const { organizationId } = req.params;
-    const {orgJoinRequestId, status} = req.body;
+    const {orgJoinRequest, status} = req.body;
 
+    console.log(orgJoinRequest, status)
     try {
-        const data = await orgJoinRequestModel.findByIdAndUpdate(orgJoinRequestId, {status}, {new: true});
+        const data = await orgJoinRequestModel.findByIdAndUpdate(orgJoinRequest, {status}, {new: true});
         if(status === 'accepted'){
             const user = await userModel.findById(data?.userId);
             if (!user) {
@@ -25,16 +26,17 @@ const manageOrgJoinReq = async (req: Request, res: Response): Promise<void> => {
             user.isVerified = true;
             await user.save();
             
-            res.status(200).json({ message: "Organization join request accepted" });
+            res.status(200).json({success: true, message: "Organization join request accepted" });
             return;
         } else {
-            res.status(200).json({ message: "Organization join request rejected" });
+            await orgJoinRequestModel.findByIdAndDelete(orgJoinRequest);
+            res.status(200).json({success: true, message: "Organization join request rejected" });
             return;
         }
 
     } catch (error) {
         console.log(error)
-        res.status(404).json({ message: "Server error" });
+        res.status(404).json({success: false, message: "Server error" });
     }
 }
 

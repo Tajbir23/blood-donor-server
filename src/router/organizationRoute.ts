@@ -6,8 +6,9 @@ import myOrganizations from "../controller/organization/myOrganizations";
 import allOrganizations from "../controller/organization/allOrganizations";
 import orgJoinRequest from "../controller/organization/orgJoinRequest";
 
-import manageOrgJoinReq from "../controller/organization/manageOrgJoinReq";
+import manageOrgJoinReq from "../controller/administrator/organizations/manageOrganizations/manageOrgJoinReq";
 import verifyOrganizationAdmin from "../handler/validation/verifyOrganizationAdmin";
+import getMembers from "../controller/organization/getMembers";
 
 const organizationRouter = Router();
 
@@ -16,8 +17,7 @@ organizationRouter.post('/register', verifyJwt, organizationLogoUpload, register
 organizationRouter.get('/my_organizations', verifyJwt, myOrganizations)
 organizationRouter.get('/organizations', allOrganizations)
 organizationRouter.post('/join_request/:organizationId', verifyJwt, orgJoinRequest)
+organizationRouter.get('/members/:organizationId', getMembers)
 
-// Add routes for organization management, such as updating organization details, deleting organization, etc.
-organizationRouter.post('/administrator/manage_join_request/:organizationId', verifyJwt, verifyOrganizationAdmin, manageOrgJoinReq)
 export default organizationRouter;
 

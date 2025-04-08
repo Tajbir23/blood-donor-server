@@ -14,7 +14,7 @@ const findNearAvailableDonor = async(latitude: number, longitude: number, bloodG
                         type: "Point",
                         coordinates: [longitude, latitude]
                     },
-                    $maxDistance: 100000 // 100 km
+                    $maxDistance: 15000 // 15 km
                 }
             },
             bloodGroup: bloodGroup,
