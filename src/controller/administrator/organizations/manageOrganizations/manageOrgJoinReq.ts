@@ -5,31 +5,28 @@ import mongoose from "mongoose";
 
 const manageOrgJoinReq = async (req: Request, res: Response): Promise<void> => {
     const { organizationId } = req.params;
-    const {orgJoinRequest, status} = req.body;
+    const { userId, status} = req.body;
 
-    console.log(orgJoinRequest, status)
+    console.log("organizationId", organizationId, "orgJoinReq", userId, "status", status)
+
     try {
-        const data = await orgJoinRequestModel.findByIdAndUpdate(orgJoinRequest, {status}, {new: true});
+        
         if(status === 'accepted'){
-            const user = await userModel.findById(data?.userId);
+            const user = await userModel.findById(userId);
             if (!user) {
                 res.status(404).json({ message: "User not found" });
                 return;
             }
 
-            if (!user.organizationId) {
-                user.organizationId = [];
-            }
 
+            await userModel.updateOne({_id: userId}, {$push : {organizationId: organizationId}})
             
-            user.organizationId.push(organizationId as unknown as mongoose.Schema.Types.ObjectId);
-            user.isVerified = true;
-            await user.save();
-            
+            await orgJoinRequestModel.updateOne({userId, organizationId}, {status})
+
             res.status(200).json({success: true, message: "Organization join request accepted" });
             return;
         } else {
-            await orgJoinRequestModel.findByIdAndDelete(orgJoinRequest);
+            await orgJoinRequestModel.deleteOne({userId, organizationId})
             res.status(200).json({success: true, message: "Organization join request rejected" });
             return;
         }
