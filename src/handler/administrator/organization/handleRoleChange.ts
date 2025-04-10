@@ -54,12 +54,32 @@ const handleRoleChange = async (
             }
         });
 
-        // Remove organizationId from user if not a member
-        const user = await userModel.findByIdAndUpdate(userId, {
-            [targetRole === "member" ? "$addToSet" : "$pull"]: {
-                organizationId: orgObjectId
-            }
-        }, { new: true });
+        // if targetRole is member, add the organizationId to the user and remove from other roles
+        if (targetRole === "member") {
+            await userModel.findByIdAndUpdate(userId, {
+                $addToSet: { organizations: orgObjectId }
+            });
+
+            await organizationModel.findByIdAndUpdate(organizationId, {
+                $pull: {
+                    admins: userObjectId,
+                    moderators: userObjectId,
+                    superAdmins: userObjectId
+                }
+            });
+        }
+
+        console.log(orgObjectId)
+
+        // if targetRole is admin, moderator, or superAdmin, remove the organizationId from the user
+        if (targetRole === "admin" || targetRole === "moderator" || targetRole === "superAdmin") {
+            await userModel.findByIdAndUpdate(userId, {
+                $pull: {
+                  organizationId: new Types.ObjectId(organizationId) // ✅ ObjectId পাঠাতে হবে
+                }
+              });
+        }
+        
 
         // For other roles (admin, moderator, member)
         let roleUpdate: any = {};
@@ -67,8 +87,6 @@ const handleRoleChange = async (
             roleUpdate.admins = userObjectId;
         } else if (targetRole === "moderator") {
             roleUpdate.moderators = userObjectId;
-        } else if (targetRole === "member") {
-            roleUpdate.members = userObjectId;
         }
 
         // Update the role in the organization
@@ -80,7 +98,7 @@ const handleRoleChange = async (
 
         res.status(200).json({
             success: true,
-            message: `${user?.fullName} is now ${targetRole}`
+            message: `Role updated successfully`
         });
         return;
 

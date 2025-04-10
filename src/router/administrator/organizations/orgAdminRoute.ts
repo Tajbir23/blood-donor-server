@@ -16,4 +16,5 @@ orgAdminRouter.post('/add_member/:organizationId',verifyJwt, verifyOrganizationA
 orgAdminRouter.put('/update_last_donation/:organizationId',verifyJwt, verifyOrganizationAdmin, updateUserLastDonation)
 orgAdminRouter.post('/manage_role/:organizationId', verifyJwt, verifyOrganizationAdmin, manageRole)
 orgAdminRouter.post('/remove_member/:organizationId', verifyJwt, verifyOrganizationAdmin, removeUser)
+
 export default orgAdminRouter;

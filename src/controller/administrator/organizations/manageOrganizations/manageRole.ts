@@ -8,6 +8,8 @@ const manageRole = async (req: Request, res: Response) => {
     const adminRole = (req as any).user.role;
     const _id = (req as any).user._id;
 
+    console.log("adminRole", adminRole)
+    console.log(req.body)
     try {
         // Check if user is trying to change their own role
         if (userId === _id) {
@@ -32,6 +34,10 @@ const manageRole = async (req: Request, res: Response) => {
 
         // MODERATOR — cannot change roles
         if (adminRole === "moderator") {
+            if(["member"].includes(targetRole)) {
+                await handleRoleChange(organizationId, userId, targetRole, res);
+                return
+            }
             res.status(403).json({ success: false, message: "Moderators cannot change any roles" });
             return
         }
@@ -57,7 +63,8 @@ const manageRole = async (req: Request, res: Response) => {
                 await handleRoleChange(organizationId, userId, targetRole, res);
                 return
             } else {
-                res.status(403).json({ success: false, message: `Invalid role ${targetRole}` });
+                
+                res.status(403).json({ success: false, message: `You don't have permission to assign role: ${targetRole}` });
                 return
             }
         }

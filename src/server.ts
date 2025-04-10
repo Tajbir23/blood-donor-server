@@ -34,7 +34,7 @@ app.use(cookieParser())
 connection()
 
 // CORS setup - must be before routes
-export const allowOrigins = ['http://localhost:3000', 'http://127.0.0.1:5500']
+export const allowOrigins = ['http://localhost:3000', 'http://127.0.0.1:5500', 'https://0037-103-248-204-82.ngrok-free.app']
 app.use(cors({
     origin: allowOrigins,
     credentials: true
