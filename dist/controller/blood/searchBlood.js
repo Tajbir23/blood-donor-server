@@ -7,7 +7,7 @@ const findNearAvailableDonor_1 = __importDefault(require("../../handler/donor/fi
 const searchBlood = async (req, res) => {
     try {
         const { bloodGroup, latitude, longitude } = req.body;
-        console.log(bloodGroup);
+        console.log(req.body);
         if (!bloodGroup || !latitude || !longitude) {
             res.status(400).json({
                 success: false,

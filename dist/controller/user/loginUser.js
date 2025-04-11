@@ -7,6 +7,7 @@ const userSchema_1 = __importDefault(require("../../models/user/userSchema"));
 const verifyPass_1 = __importDefault(require("../../handler/validation/verifyPass"));
 const generateJwt_1 = __importDefault(require("../../handler/validation/generateJwt"));
 const addActiveUser_1 = __importDefault(require("../../handler/user/addActiveUser"));
+const findOrgRole_1 = __importDefault(require("../administrator/organizations/user/findOrgRole"));
 const loginUser = async (req, res) => {
     const { identity, password } = req.body;
     try {
@@ -25,8 +26,10 @@ const loginUser = async (req, res) => {
             const checkPass = await (0, verifyPass_1.default)(password, user.password);
             if (checkPass) {
                 (0, addActiveUser_1.default)(user._id);
-                const token = (0, generateJwt_1.default)(user.phone, user._id, user.role);
-                res.cookie("token", token, { httpOnly: true, secure: false, sameSite: "lax" });
+                const userId = user._id.toString();
+                const orgRole = await (0, findOrgRole_1.default)(userId);
+                const token = (0, generateJwt_1.default)(user.phone, user._id, user.role, orgRole);
+                res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "lax" });
                 res.status(200).json({ success: true, message: "Login successful", user });
                 return;
             }
@@ -36,6 +39,7 @@ const loginUser = async (req, res) => {
             }
         }
         else {
+            console.log("fingOrgRole.ts", 401);
             res.status(401).json({ message: "ফোন নম্বর বা পাসওয়ার্ড ভুল হয়েছে" });
             return;
         }

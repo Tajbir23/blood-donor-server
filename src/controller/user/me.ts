@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import userModel from "../../models/user/userSchema";
 import generateJwt from "../../handler/validation/generateJwt";
+import findOrgRole from "../administrator/organizations/user/findOrgRole";
 
 interface UserRequest extends Request {
     user: {
@@ -21,9 +22,10 @@ const me = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const token = await generateJwt( user.phone, user._id, user.role )
+        const orgRole = await findOrgRole(user._id.toString());
+        const token = await generateJwt( user.phone, user._id, user.role, orgRole )
         
-        res.cookie("token", token, {httpOnly: true, secure: false, sameSite: "lax"});
+        res.cookie("token", token, {httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "lax"});
         res.status(200).json({ success: true, user})
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error', error })

@@ -5,7 +5,7 @@ const manageOrg = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
     const { status } = req.body;
 
-    console.log(req.body , organizationId)
+    console.log(req.body , organizationId, "calling it")
     const { role } = (req as any).user 
 
     if(role !== 'admin' && role !== 'superAdmin'){
@@ -15,6 +15,7 @@ const manageOrg = async (req: Request, res: Response) => {
 
     try {
         const organization = await organizationModel.findById(organizationId);
+        console.log(organization, "organization")
     if (!organization) {
         res.status(404).json({ message: "Organization not found" });
         return;
@@ -38,6 +39,7 @@ const manageOrg = async (req: Request, res: Response) => {
         await organization.save();
         res.status(200).json({success: true, message: "Organization updated successfully" });
     } catch (error) {
+        console.log(error)
         res.status(500).json({success: false, message: "Error updating organization", error });
     }
 }

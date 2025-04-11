@@ -15,6 +15,7 @@ const updateLastDonation = async (req, res) => {
         // ডাটাবেজ থেকে ইউজারের তথ্য আনো
         const user = await userSchema_1.default.findById(userId);
         if (!user) {
+            console.log("updateLastDonation.ts", 401);
             res.status(401).json({ success: false, message: "Unauthorized" });
             return;
         }

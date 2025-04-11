@@ -4,6 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const userSchema_1 = __importDefault(require("../../models/user/userSchema"));
+const generateJwt_1 = __importDefault(require("../../handler/validation/generateJwt"));
+const findOrgRole_1 = __importDefault(require("../administrator/organizations/user/findOrgRole"));
 const me = async (req, res) => {
     try {
         const userRequest = req;
@@ -16,6 +18,9 @@ const me = async (req, res) => {
             res.status(404).json({ success: false, message: 'User not found' });
             return;
         }
+        const orgRole = await (0, findOrgRole_1.default)(user._id.toString());
+        const token = await (0, generateJwt_1.default)(user.phone, user._id, user.role, orgRole);
+        res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "lax" });
         res.status(200).json({ success: true, user });
     }
     catch (error) {

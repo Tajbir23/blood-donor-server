@@ -4,6 +4,7 @@ import userModel from "../../models/user/userSchema";
 import generateJwt from "../../handler/validation/generateJwt";
 import addActiveUser from "../../handler/user/addActiveUser";
 import sendOtp from "./sendOtp";
+import findOrgRole from "../administrator/organizations/user/findOrgRole";
 
 export const tempStoreUser = new Map<string, any>()
 
@@ -25,7 +26,8 @@ export const saveUser = async (data: any) => {
     await user.save
     await tempStoreUser.delete(user?.email)
     addActiveUser(user._id)
-    const token = generateJwt(user.phone, user._id, user.role)
+    const orgRole = await findOrgRole(user._id.toString());
+    const token = generateJwt(user.phone, user._id, user.role, orgRole)
     return {user, token}
 }
 

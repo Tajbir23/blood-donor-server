@@ -7,7 +7,9 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const verifyJwt = (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
+        console.log("verifyJwt.ts token", token);
         if (!token) {
+            console.log("verifyJwt.ts", 401);
             res.status(401).json({ message: 'অনুমতি নেই' });
             return;
         }
@@ -17,6 +19,7 @@ const verifyJwt = (req, res, next) => {
     }
     catch (error) {
         console.log(error);
+        console.log("verifyJwt.ts error", 401);
         res.status(401).json({ message: 'অবৈধ টোকেন' });
     }
 };

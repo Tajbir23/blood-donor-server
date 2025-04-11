@@ -50,7 +50,7 @@ const setCookies = (req: Request, res: Response, next: NextFunction) => {
     res.cookie("cookie", "hello world", {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false
+        secure: process.env.NODE_ENV === 'production'
     })
     next()
 }

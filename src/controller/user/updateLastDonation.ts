@@ -15,6 +15,7 @@ const updateLastDonation = async (req: Request, res: Response): Promise<void> =>
         const user = await userModel.findById(userId);
         
         if (!user) {
+            console.log("updateLastDonation.ts", 401)
             res.status(401).json({ success: false, message: "Unauthorized" });
             return;
         }

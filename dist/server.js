@@ -65,7 +65,7 @@ exports.app.use((0, cookie_parser_1.default)());
 // Connect to MongoDB
 (0, db_1.default)();
 // CORS setup - must be before routes
-exports.allowOrigins = ['http://localhost:3000', 'http://127.0.0.1:5500'];
+exports.allowOrigins = ['http://localhost:3000', 'http://127.0.0.1:5500', 'https://0037-103-248-204-82.ngrok-free.app'];
 exports.app.use((0, cors_1.default)({
     origin: exports.allowOrigins,
     credentials: true
@@ -78,7 +78,7 @@ const setCookies = (req, res, next) => {
     res.cookie("cookie", "hello world", {
         httpOnly: true,
         sameSite: 'lax',
-        secure: false
+        secure: process.env.NODE_ENV === 'production'
     });
     next();
 };

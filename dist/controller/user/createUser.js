@@ -9,6 +9,7 @@ const userSchema_1 = __importDefault(require("../../models/user/userSchema"));
 const generateJwt_1 = __importDefault(require("../../handler/validation/generateJwt"));
 const addActiveUser_1 = __importDefault(require("../../handler/user/addActiveUser"));
 const sendOtp_1 = __importDefault(require("./sendOtp"));
+const findOrgRole_1 = __importDefault(require("../administrator/organizations/user/findOrgRole"));
 exports.tempStoreUser = new Map();
 const saveUser = async (data) => {
     const { latitude, longitude, ...restData } = data;
@@ -25,7 +26,8 @@ const saveUser = async (data) => {
     await user.save;
     await exports.tempStoreUser.delete(user?.email);
     (0, addActiveUser_1.default)(user._id);
-    const token = (0, generateJwt_1.default)(user.phone, user._id, user.role);
+    const orgRole = await (0, findOrgRole_1.default)(user._id.toString());
+    const token = (0, generateJwt_1.default)(user.phone, user._id, user.role, orgRole);
     return { user, token };
 };
 exports.saveUser = saveUser;
