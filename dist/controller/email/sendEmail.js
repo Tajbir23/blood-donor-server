@@ -49,9 +49,9 @@ const sendEmail = async (data) => {
         to: email, // List of receivers
         subject: emailSubject, // Dynamic subject based on template type
         html: htmlContent, // HTML body
-        text: (templateType === "otp" || templateType === "verifyEmail") ? templateData?.otp :
-            (templateType === "forgot-password") ? `আপনার নতুন পাসওয়ার্ড: ${templateData?.newPassword}` :
-                templateData?.message
+        text: (templateType === "otp" || templateType === "verifyEmail") ? templateData === null || templateData === void 0 ? void 0 : templateData.otp :
+            (templateType === "forgot-password") ? `আপনার নতুন পাসওয়ার্ড: ${templateData === null || templateData === void 0 ? void 0 : templateData.newPassword}` :
+                templateData === null || templateData === void 0 ? void 0 : templateData.message
     };
     try {
         // Send mail with defined transport object

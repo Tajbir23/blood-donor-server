@@ -13,9 +13,13 @@ import scheduleOrganizationCheck from './cron/organizationCheck'
 import scheduleDonationReminder from './cron/donationReminder'
 import morgan from 'morgan'
 import path from 'path'
+import scheduleOldBloodRequestRemove from './cron/oldBloodRequestRemove'
 const PORT = process.env.PORT || 4000
 
 export const app = express()
+
+// Trust proxy - required for Railway deployment behind proxy
+app.set('trust proxy', 1);
 
 // Basic security with Helmet - helps with many security vulnerabilities including DDoS
 app.use(helmet({
@@ -34,9 +38,25 @@ app.use(cookieParser())
 connection()
 
 // CORS setup - must be before routes
-export const allowOrigins = ['http://localhost:3000', 'http://127.0.0.1:5500', 'https://0037-103-248-204-82.ngrok-free.app']
+export const allowOrigins = [
+    'http://localhost:3000', 
+    'http://127.0.0.1:5500', 
+    'https://0037-103-248-204-82.ngrok-free.app', 
+    'https://blood-donor-bangladesh.vercel.app',
+    'https://blood-donor-client.vercel.app'
+]
+
 app.use(cors({
-    origin: allowOrigins,
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if(!origin) return callback(null, true);
+        
+        if(allowOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+            callback(null, true);
+        } else {
+            callback(null, false);
+        }
+    },
     credentials: true
 }))
 
@@ -54,6 +74,7 @@ const setCookies = (req: Request, res: Response, next: NextFunction) => {
     })
     next()
 }
+
 // Test route
 app.get('/', setCookies, async(req: Request, res: Response) => {
     res.send({message: "hello rangpur"})
@@ -68,6 +89,15 @@ app.get('/test-cookie', (req: Request, res: Response) => {
     res.send({ message: "Cookie set!" })
 })
 
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    console.error('Server error:', err);
+    res.status(500).json({ 
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
+    });
+});
+
 export let activeUsers: string[] = []
 
 app.listen(PORT, () => {
@@ -78,4 +108,6 @@ app.listen(PORT, () => {
     console.log('Organization check cron job scheduled');
     scheduleDonationReminder();
     console.log('Donation reminder cron job scheduled');
+    scheduleOldBloodRequestRemove();
+    console.log('Old blood request remove cron job scheduled');
 })

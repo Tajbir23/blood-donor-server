@@ -52,10 +52,10 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
         const encryptedPassword = await encryptPass(data.password)
         data.password = encryptedPassword
 
-        await sendOtp(data?.email)
         const checkUniqueEmail = await userModel.findOne({email: data?.email})
         const checkUniquePhone = await userModel.findOne({phone: data?.phone})
         if(checkUniqueEmail){
+            console.log(checkUniqueEmail)
             res.status(400).json({success: false, message: "Email already exists"})
             return;
         }
@@ -63,6 +63,8 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({success: false, message: "Phone number already exists"})
             return;
         }
+
+        await sendOtp(data?.email)
         tempStoreUser.set(data?.email, data)
 
         

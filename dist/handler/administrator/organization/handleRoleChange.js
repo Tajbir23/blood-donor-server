@@ -33,7 +33,7 @@ const handleRoleChange = async (organizationId, userId, targetRole, res, isOwner
             const user = await userSchema_1.default.findById(userId);
             res.status(200).json({
                 success: true,
-                message: `${user?.fullName} is now the owner of the organization`
+                message: `${user === null || user === void 0 ? void 0 : user.fullName} is now the owner of the organization`
             });
             return;
         }

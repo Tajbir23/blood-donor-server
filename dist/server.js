@@ -52,6 +52,8 @@ const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
+// Trust proxy - required for Railway deployment behind proxy
+exports.app.set('trust proxy', 1);
 // Basic security with Helmet - helps with many security vulnerabilities including DDoS
 exports.app.use((0, helmet_1.default)({
     crossOriginResourcePolicy: false
@@ -65,9 +67,25 @@ exports.app.use((0, cookie_parser_1.default)());
 // Connect to MongoDB
 (0, db_1.default)();
 // CORS setup - must be before routes
-exports.allowOrigins = ['http://localhost:3000', 'http://127.0.0.1:5500', 'https://0037-103-248-204-82.ngrok-free.app'];
+exports.allowOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:5500',
+    'https://0037-103-248-204-82.ngrok-free.app',
+    'https://blood-donor-bangladesh.vercel.app',
+    'https://blood-donor-client.vercel.app'
+];
 exports.app.use((0, cors_1.default)({
-    origin: exports.allowOrigins,
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin)
+            return callback(null, true);
+        if (exports.allowOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+            callback(null, true);
+        }
+        else {
+            callback(null, false);
+        }
+    },
     credentials: true
 }));
 // Set up static file serving for uploads directory
@@ -93,6 +111,14 @@ exports.app.get('/test-cookie', (req, res) => {
         secure: true
     });
     res.send({ message: "Cookie set!" });
+});
+// Error handling middleware
+exports.app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
+    });
 });
 exports.activeUsers = [];
 exports.app.listen(PORT, () => {

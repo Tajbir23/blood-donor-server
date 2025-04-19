@@ -102,7 +102,7 @@ const generateEmailTemplate = (type, data) => {
                     </div>
                     <div style="padding: 20px;">
                         <h3>রক্তদান অনুরোধ</h3>
-                        <p>প্রিয় ${data?.name},</p>
+                        <p>প্রিয় ${data === null || data === void 0 ? void 0 : data.name},</p>
                         <p>আমাদের কাছে <strong>${data.bloodGroup}</strong> রক্তের একটি জরুরী অনুরোধ এসেছে:</p>
                         
                         <div style="background-color: #f5f5f5; padding: 15px; margin: 15px 0; border-left: 4px solid #f44336;">

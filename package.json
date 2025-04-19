@@ -1,7 +1,7 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "src/server.ts",
+  "main": "dist/server.js",
   "engines": {
     "node": ">=16.x"
   },
@@ -11,7 +11,7 @@
     "start": "node dist/server.js",
     "build": "tsc",
     "watch": "tsc --watch",
-    "vercel-build": "tsc"
+    "postinstall": "npm run build"
   },
   "keywords": [],
   "author": "",

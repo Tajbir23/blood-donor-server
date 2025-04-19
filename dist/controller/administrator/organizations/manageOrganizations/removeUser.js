@@ -9,7 +9,7 @@ const removeUser = async (req, res) => {
     const { userId } = req.body;
     try {
         const user = await userSchema_1.default.findByIdAndUpdate(userId, { $pull: { organizationId } });
-        res.status(201).json({ success: true, message: `${user?.fullName} remove from organization` });
+        res.status(201).json({ success: true, message: `${user === null || user === void 0 ? void 0 : user.fullName} remove from organization` });
         return;
     }
     catch (error) {

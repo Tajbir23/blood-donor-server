@@ -45,7 +45,7 @@ const loginUser = async (req, res) => {
         }
     }
     catch (error) {
-        console.log(error?.message, error);
+        console.log(error === null || error === void 0 ? void 0 : error.message, error);
         res.status(500).json({ message: "সার্ভার ত্রুটি" });
     }
 };

@@ -51,10 +51,13 @@ const getOrganizations = async (req, res) => {
                 }
             }
         ]);
-        const organizationsWithMemberCount = organizations.map(org => ({
-            ...org.toObject(),
-            memberCount: memberCounts.find(mc => mc._id.equals(org._id))?.count || 0
-        }));
+        const organizationsWithMemberCount = organizations.map(org => {
+            var _a;
+            return ({
+                ...org.toObject(),
+                memberCount: ((_a = memberCounts.find(mc => mc._id.equals(org._id))) === null || _a === void 0 ? void 0 : _a.count) || 0
+            });
+        });
         const totalOrganizations = await organizationSchema_1.default.countDocuments(query);
         const totalPages = Math.ceil(totalOrganizations / Number(limit));
         res.status(200).json({ organizations, totalPages });

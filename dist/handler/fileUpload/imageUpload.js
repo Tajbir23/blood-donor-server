@@ -10,6 +10,7 @@ const fs_1 = __importDefault(require("fs"));
 // Create a factory function that returns the middleware with the desired field name
 const createImageUpload = (fieldName = 'profileImage') => {
     return (req, res, next) => {
+        var _a;
         // Create uploads directory if it doesn't exist
         const uploadDir = path_1.default.join(process.cwd(), 'uploads');
         if (!fs_1.default.existsSync(uploadDir)) {
@@ -40,7 +41,7 @@ const createImageUpload = (fieldName = 'profileImage') => {
             }
         });
         // Only run multer if there's actually a file being uploaded
-        if (req.headers['content-type']?.includes('multipart/form-data')) {
+        if ((_a = req.headers['content-type']) === null || _a === void 0 ? void 0 : _a.includes('multipart/form-data')) {
             const uploadImage = upload.single(fieldName);
             uploadImage(req, res, (err) => {
                 if (err) {

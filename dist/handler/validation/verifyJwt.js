@@ -5,8 +5,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const verifyJwt = (req, res, next) => {
+    var _a;
     try {
-        const token = req.headers.authorization?.split(' ')[1];
+        const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
         console.log("verifyJwt.ts token", token);
         if (!token) {
             console.log("verifyJwt.ts", 401);

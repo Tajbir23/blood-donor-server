@@ -24,7 +24,7 @@ const saveUser = async (data) => {
     });
     user.emailVerified = true;
     await user.save;
-    await exports.tempStoreUser.delete(user?.email);
+    await exports.tempStoreUser.delete(user === null || user === void 0 ? void 0 : user.email);
     (0, addActiveUser_1.default)(user._id);
     const orgRole = await (0, findOrgRole_1.default)(user._id.toString());
     const token = (0, generateJwt_1.default)(user.phone, user._id, user.role, orgRole);
@@ -52,9 +52,9 @@ const createUser = async (req, res) => {
     try {
         const encryptedPassword = await (0, encryptPass_1.default)(data.password);
         data.password = encryptedPassword;
-        await (0, sendOtp_1.default)(data?.email);
-        const checkUniqueEmail = await userSchema_1.default.findOne({ email: data?.email });
-        const checkUniquePhone = await userSchema_1.default.findOne({ phone: data?.phone });
+        await (0, sendOtp_1.default)(data === null || data === void 0 ? void 0 : data.email);
+        const checkUniqueEmail = await userSchema_1.default.findOne({ email: data === null || data === void 0 ? void 0 : data.email });
+        const checkUniquePhone = await userSchema_1.default.findOne({ phone: data === null || data === void 0 ? void 0 : data.phone });
         if (checkUniqueEmail) {
             res.status(400).json({ success: false, message: "Email already exists" });
             return;
@@ -63,7 +63,7 @@ const createUser = async (req, res) => {
             res.status(400).json({ success: false, message: "Phone number already exists" });
             return;
         }
-        exports.tempStoreUser.set(data?.email, data);
+        exports.tempStoreUser.set(data === null || data === void 0 ? void 0 : data.email, data);
         res.status(200).json({ success: true, message: "OTP sent to email", email: data.email });
     }
     catch (error) {
