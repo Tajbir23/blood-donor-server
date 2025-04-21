@@ -5,27 +5,85 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const userSchema_1 = __importDefault(require("../../../../models/user/userSchema"));
 const donationHistorySchema_1 = __importDefault(require("../../../../models/user/donationHistorySchema"));
-const getStatistics = async () => {
-    const totalDonors = await userSchema_1.default.countDocuments();
-    const totalActiveDonors = await userSchema_1.default.countDocuments({
-        isActive: true,
-        isBanned: false
-    });
-    const totalDonationCount = await donationHistorySchema_1.default.countDocuments();
-    const thisMonthDonations = await donationHistorySchema_1.default.countDocuments({
-        createdAt: {
-            $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-            $lte: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+const organizationSchema_1 = __importDefault(require("../../../../models/organization/organizationSchema"));
+// Simple cache implementation without external dependencies
+class SimpleCache {
+    constructor(ttlSeconds = 300) {
+        this.cache = new Map();
+        this.defaultTTL = ttlSeconds * 1000;
+    }
+    get(key) {
+        const item = this.cache.get(key);
+        if (!item)
+            return null;
+        if (Date.now() > item.expiry) {
+            this.cache.delete(key);
+            return null;
         }
-    });
-    return {
-        totalDonors,
-        totalActiveDonors,
-        totalDonationCount,
-        thisMonthDonations
+        return item.value;
+    }
+    set(key, value, ttlSeconds) {
+        const ttl = ttlSeconds ? ttlSeconds * 1000 : this.defaultTTL;
+        this.cache.set(key, {
+            value,
+            expiry: Date.now() + ttl
+        });
+    }
+}
+// Create cache with 5 minute TTL
+const dashboardCache = new SimpleCache(300);
+const getStatistics = async () => {
+    var _a, _b, _c, _d, _e, _f, _g, _h;
+    const cacheKey = "dashboard_statistics";
+    const cachedStats = dashboardCache.get(cacheKey);
+    if (cachedStats)
+        return cachedStats;
+    // Combine multiple countDocuments into a single aggregation
+    const [userStats, donationStats] = await Promise.all([
+        userSchema_1.default.aggregate([
+            {
+                $facet: {
+                    "totalDonors": [{ $count: "count" }],
+                    "totalActiveDonors": [
+                        { $match: { isActive: true, isBanned: false } },
+                        { $count: "count" }
+                    ]
+                }
+            }
+        ]),
+        donationHistorySchema_1.default.aggregate([
+            {
+                $facet: {
+                    "totalDonationCount": [{ $count: "count" }],
+                    "thisMonthDonations": [
+                        {
+                            $match: {
+                                createdAt: {
+                                    $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                                    $lte: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+                                }
+                            }
+                        },
+                        { $count: "count" }
+                    ]
+                }
+            }
+        ])
+    ]);
+    const statistics = {
+        totalDonors: ((_b = (_a = userStats[0]) === null || _a === void 0 ? void 0 : _a.totalDonors[0]) === null || _b === void 0 ? void 0 : _b.count) || 0,
+        totalActiveDonors: ((_d = (_c = userStats[0]) === null || _c === void 0 ? void 0 : _c.totalActiveDonors[0]) === null || _d === void 0 ? void 0 : _d.count) || 0,
+        totalDonationCount: ((_f = (_e = donationStats[0]) === null || _e === void 0 ? void 0 : _e.totalDonationCount[0]) === null || _f === void 0 ? void 0 : _f.count) || 0,
+        thisMonthDonations: ((_h = (_g = donationStats[0]) === null || _g === void 0 ? void 0 : _g.thisMonthDonations[0]) === null || _h === void 0 ? void 0 : _h.count) || 0,
     };
+    dashboardCache.set(cacheKey, statistics);
+    return statistics;
 };
 const getBloodInventory = async () => {
+    const cacheKey = "blood_inventory";
+    const cachedInventory = dashboardCache.get(cacheKey);
+    if (cachedInventory)
+        return cachedInventory;
     const bloodData = await userSchema_1.default.aggregate([
         {
             $group: {
@@ -45,7 +103,7 @@ const getBloodInventory = async () => {
     };
     const allGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
     const inventory = allGroups.map(group => {
-        const found = bloodData.find(blood => blood.bloodGroup === group);
+        const found = bloodData.find(blood => blood._id === group);
         const units = found ? found.count : 0;
         return {
             bloodGroup: group,
@@ -57,25 +115,38 @@ const getBloodInventory = async () => {
         'A+': 0, 'A-': 0, 'B+': 0, 'B-': 0, 'AB+': 0, 'AB-': 0, 'O+': 0, 'O-': 0
     };
     bloodData.forEach(blood => {
-        bloodGroupMap[blood.bloodGroup] = blood.count;
+        if (blood._id && bloodGroupMap.hasOwnProperty(blood._id)) {
+            bloodGroupMap[blood._id] = blood.count;
+        }
     });
     const labels = Object.keys(bloodGroupMap);
     const data = Object.values(bloodGroupMap);
-    return {
+    const result = {
         bloodDistributionData: {
             labels,
             data
         },
         inventory
     };
+    dashboardCache.set(cacheKey, result);
+    return result;
 };
 const getRecentDonations = async () => {
+    const cacheKey = "recent_donations";
+    const cachedDonations = dashboardCache.get(cacheKey);
+    if (cachedDonations)
+        return cachedDonations;
     const recentDonations = await donationHistorySchema_1.default.find()
         .sort({ createdAt: -1 })
         .limit(5);
+    dashboardCache.set(cacheKey, recentDonations);
     return recentDonations;
 };
 const getdonationsChartData = async (timeRange) => {
+    const cacheKey = `donations_chart_${timeRange}`;
+    const cachedChartData = dashboardCache.get(cacheKey);
+    if (cachedChartData)
+        return cachedChartData;
     const now = new Date();
     let startDate;
     let groupFormat;
@@ -145,26 +216,76 @@ const getdonationsChartData = async (timeRange) => {
             data.push(found ? found.total : 0);
         }
     }
-    return {
+    const result = {
         labels,
         data
     };
+    dashboardCache.set(cacheKey, result);
+    return result;
+};
+const topOrganizations = async () => {
+    const cacheKey = "top_organizations";
+    const cachedOrgs = dashboardCache.get(cacheKey);
+    if (cachedOrgs)
+        return cachedOrgs;
+    const topOrgs = await organizationSchema_1.default.aggregate([
+        { $match: { isActive: true } },
+        {
+            $lookup: {
+                from: 'users',
+                let: { orgId: '$_id' },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $ifNull: ['$organizationId', false] },
+                                    { $in: ['$$orgId', { $ifNull: ['$organizationId', []] }] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: 'members'
+            }
+        },
+        {
+            $project: {
+                organizationName: 1,
+                logoImage: 1,
+                organizationType: 1,
+                description: 1,
+                memberCount: { $size: '$members' }
+            }
+        },
+        { $sort: { memberCount: -1 } },
+        { $limit: 5 }
+    ]);
+    dashboardCache.set(cacheKey, topOrgs);
+    return topOrgs;
 };
 const getDashboardData = async (req, res) => {
     const { timeRange = '7days' } = req.query;
     try {
-        const statistics = await getStatistics();
-        const bloodInventory = await getBloodInventory();
-        const recentDonations = await getRecentDonations();
-        const donationsChartData = await getdonationsChartData(timeRange);
+        const [statistics, bloodInventory, recentDonations, donationsChartData, topOrgs, totalOrganizations] = await Promise.all([
+            getStatistics(),
+            getBloodInventory(),
+            getRecentDonations(),
+            getdonationsChartData(timeRange),
+            topOrganizations(),
+            organizationSchema_1.default.countDocuments({ isActive: true })
+        ]);
         res.status(200).json({
             statistics,
             bloodInventory,
             recentDonations,
-            donationsChartData
+            donationsChartData,
+            totalOrganizations,
+            topOrgs
         });
     }
     catch (error) {
+        console.error("Error fetching dashboard data:", error);
         res.status(500).json({
             success: false,
             message: "Error fetching dashboard data",

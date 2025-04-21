@@ -50,14 +50,15 @@ const organizationCheck_1 = __importDefault(require("./cron/organizationCheck"))
 const donationReminder_1 = __importDefault(require("./cron/donationReminder"));
 const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
-const oldBloodRequestRemove_1 = __importDefault(require("./cron/oldBloodRequestRemove"));
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
 // Trust proxy - required for Railway deployment behind proxy
 exports.app.set('trust proxy', 1);
 // Basic security with Helmet - helps with many security vulnerabilities including DDoS
+// Disable CSP as we'll use our custom implementation for more control
 exports.app.use((0, helmet_1.default)({
-    crossOriginResourcePolicy: false
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false // We'll use our custom CSP middleware instead
 }));
 // Set up custom morgan format to show cookies
 exports.app.use((0, morgan_1.default)(':method :url :status :res[set-cookie] - :response-time ms'));
@@ -91,6 +92,23 @@ exports.app.use((0, cors_1.default)({
 }));
 // Set up static file serving for uploads directory
 exports.app.use('/api/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
+// Default CSP header for routes that don't need inline scripts
+exports.app.use((req, res, next) => {
+    // Skip if it's a route that will set its own CSP
+    if (req.path.startsWith('/api/payment/invoice/')) {
+        return next();
+    }
+    // Default strict CSP for API routes
+    res.setHeader('Content-Security-Policy', "default-src 'self'; " +
+        "script-src 'self'; " +
+        "style-src 'self'; " +
+        "img-src 'self' data:; " +
+        "connect-src 'self'; " +
+        "frame-src 'none'; " +
+        "object-src 'none'; " +
+        "base-uri 'self';");
+    next();
+});
 // Apply rate limiting to API routes
 exports.app.use('/api/', limiter_1.apiLimiter, router_1.default);
 const setCookies = (req, res, next) => {
@@ -129,6 +147,4 @@ exports.app.listen(PORT, () => {
     console.log('Organization check cron job scheduled');
     (0, donationReminder_1.default)();
     console.log('Donation reminder cron job scheduled');
-    (0, oldBloodRequestRemove_1.default)();
-    console.log('Old blood request remove cron job scheduled');
 });

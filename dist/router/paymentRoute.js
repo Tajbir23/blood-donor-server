@@ -10,6 +10,7 @@ const ipn_1 = __importDefault(require("../controller/sslCommerze/ipn"));
 const successPayment_1 = __importDefault(require("../controller/sslCommerze/successPayment"));
 const failPayment_1 = __importDefault(require("../controller/sslCommerze/failPayment"));
 const getInvoice_1 = __importDefault(require("../controller/sslCommerze/getInvoice"));
+const securityUtils_1 = require("../utils/securityUtils");
 const paymentRouter = (0, express_1.Router)();
 exports.store_id = process.env.SSLCOMMERZ_STORE_ID;
 exports.store_passwd = process.env.SSLCOMMERZ_STORE_PASSWORD;
@@ -19,5 +20,9 @@ paymentRouter.post('/donation', donation_1.default);
 paymentRouter.post('/ipn', ipn_1.default);
 paymentRouter.post('/success', successPayment_1.default);
 paymentRouter.post('/fail', failPayment_1.default);
-paymentRouter.get('/invoice/:tran_id', getInvoice_1.default);
+paymentRouter.get('/invoice/:tran_id', (0, securityUtils_1.applyCSP)({
+    allowFonts: true,
+    allowImages: true,
+    allowInlineStyles: true
+}), getInvoice_1.default);
 exports.default = paymentRouter;

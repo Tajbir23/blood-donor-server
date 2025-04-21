@@ -4,8 +4,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const moneyDonationSchema_1 = __importDefault(require("../../models/donation/moneyDonationSchema"));
+const securityUtils_1 = require("../../utils/securityUtils");
 const getInvoice = async (req, res) => {
     try {
+        // Generate a random nonce for CSP
+        const nonce = (0, securityUtils_1.generateNonce)();
         const { tran_id } = req.params;
         const donation = await moneyDonationSchema_1.default.findOne({ tran_id });
         if (!donation) {
@@ -351,7 +354,7 @@ const getInvoice = async (req, res) => {
                 <button class="btn btn-print" id="printBtn">প্রিন্ট করুন</button>
             </div>
             
-            <script>
+            <script nonce="${nonce}">
                 // Simple print functionality that doesn't rely on external libraries
                 document.getElementById('printBtn').addEventListener('click', function() {
                     console.log('printBtn clicked');
@@ -361,6 +364,8 @@ const getInvoice = async (req, res) => {
         </body>
         </html>
         `;
+        // Add CSP header with nonce using the utility function
+        res.setHeader('Content-Security-Policy', (0, securityUtils_1.createCSP)(nonce));
         // Send HTML response
         res.setHeader('Content-Type', 'text/html');
         res.send(invoiceHtml);

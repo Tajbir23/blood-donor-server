@@ -18,8 +18,8 @@ const updateLastDonation_1 = __importDefault(require("../controller/user/updateL
 const searchBlood_1 = __importDefault(require("../controller/blood/searchBlood"));
 const searchDonar_1 = __importDefault(require("../controller/user/searchDonar"));
 const userRouter = (0, express_1.Router)();
-const profileImageUpload = (0, imageUpload_1.createImageUpload)('profileImage');
-userRouter.post('/register', profileImageUpload, createUser_1.default);
+// Using the optimized profileImageUpload middleware with preset dimensions and quality
+userRouter.post('/register', imageUpload_1.profileImageUpload, createUser_1.default);
 userRouter.post('/login', limiter_1.loginLimiter, loginUser_1.default);
 userRouter.get("/logout", verifyJwt_1.default, logoutUser_1.default);
 userRouter.post("/verify-otp", limiter_1.loginLimiter, verifyOtp_1.default);

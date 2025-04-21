@@ -5,7 +5,7 @@ import handleRoleChange from "../../../../handler/administrator/organization/han
 const manageRole = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
     const {userId, targetRole} = req.body
-    const adminRole = (req as any).user.role;
+    const adminRole = (req as any).role;
     const _id = (req as any).user._id;
 
     console.log("adminRole", adminRole)

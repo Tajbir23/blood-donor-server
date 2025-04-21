@@ -1,12 +1,16 @@
 import { Request, Response } from "express";
 import MoneyDonation from "../../models/donation/moneyDonationSchema";
+import { generateNonce, createCSP } from "../../utils/securityUtils";
 
 const getInvoice = async (req: Request, res: Response) => {
     try {
-    const { tran_id } = req.params;
-    const donation = await MoneyDonation.findOne({ tran_id });
+        // Generate a random nonce for CSP
+        const nonce = generateNonce();
+
+        const { tran_id } = req.params;
+        const donation = await MoneyDonation.findOne({ tran_id });
         
-    if (!donation) {
+        if (!donation) {
             res.status(404).json({ message: "অনুদান খুঁজে পাওয়া যায়নি" });
             return;
         }
@@ -351,7 +355,7 @@ const getInvoice = async (req: Request, res: Response) => {
                 <button class="btn btn-print" id="printBtn">প্রিন্ট করুন</button>
             </div>
             
-            <script>
+            <script nonce="${nonce}">
                 // Simple print functionality that doesn't rely on external libraries
                 document.getElementById('printBtn').addEventListener('click', function() {
                     console.log('printBtn clicked');
@@ -361,6 +365,9 @@ const getInvoice = async (req: Request, res: Response) => {
         </body>
         </html>
         `;
+        
+        // Add CSP header with nonce using the utility function
+        res.setHeader('Content-Security-Policy', createCSP(nonce));
         
         // Send HTML response
         res.setHeader('Content-Type', 'text/html');

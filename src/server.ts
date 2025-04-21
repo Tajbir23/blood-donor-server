@@ -21,8 +21,10 @@ export const app = express()
 app.set('trust proxy', 1);
 
 // Basic security with Helmet - helps with many security vulnerabilities including DDoS
+// Disable CSP as we'll use our custom implementation for more control
 app.use(helmet({
-    crossOriginResourcePolicy: false
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false // We'll use our custom CSP middleware instead
 }))
 
 // Set up custom morgan format to show cookies
@@ -61,6 +63,27 @@ app.use(cors({
 
 // Set up static file serving for uploads directory
 app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Default CSP header for routes that don't need inline scripts
+app.use((req: Request, res: Response, next: NextFunction) => {
+    // Skip if it's a route that will set its own CSP
+    if (req.path.startsWith('/api/payment/invoice/')) {
+        return next();
+    }
+    
+    // Default strict CSP for API routes
+    res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "script-src 'self'; " +
+        "style-src 'self'; " +
+        "img-src 'self' data:; " +
+        "connect-src 'self'; " +
+        "frame-src 'none'; " +
+        "object-src 'none'; " +
+        "base-uri 'self';"
+    );
+    next();
+});
 
 // Apply rate limiting to API routes
 app.use('/api/', apiLimiter, router)

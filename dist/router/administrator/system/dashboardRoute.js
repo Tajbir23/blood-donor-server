@@ -5,6 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const getDashboardData_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getDashboardData"));
+const verifyJwt_1 = __importDefault(require("../../../handler/validation/verifyJwt"));
+const verifyIsAdmin_1 = __importDefault(require("../../../handler/validation/verifyIsAdmin"));
+const getAllUsers_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getAllUsers"));
 const systemDashboardRoute = (0, express_1.Router)();
-systemDashboardRoute.get('/dashboard', getDashboardData_1.default);
+systemDashboardRoute.get('/dashboard', verifyJwt_1.default, verifyIsAdmin_1.default, getDashboardData_1.default);
+systemDashboardRoute.get('/users', verifyJwt_1.default, verifyIsAdmin_1.default, getAllUsers_1.default);
 exports.default = systemDashboardRoute;

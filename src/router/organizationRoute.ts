@@ -12,7 +12,14 @@ import getMembers from "../controller/organization/getMembers";
 
 const organizationRouter = Router();
 
-const organizationLogoUpload = createImageUpload('organization')
+// Create optimized organization logo upload with appropriate settings
+const organizationLogoUpload = createImageUpload('organization', {
+    maxWidth: 800,
+    maxHeight: 800,
+    quality: 85,
+    format: 'webp' // Using WebP for better compression while maintaining quality
+});
+
 organizationRouter.post('/register', verifyJwt, organizationLogoUpload, registerOrg)
 organizationRouter.get('/my_organizations', verifyJwt, myOrganizations)
 organizationRouter.get('/organizations', allOrganizations)

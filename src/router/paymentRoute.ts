@@ -4,6 +4,7 @@ import ipn from "../controller/sslCommerze/ipn";
 import successPayment from "../controller/sslCommerze/successPayment";
 import failPayment from "../controller/sslCommerze/failPayment";
 import getInvoice from "../controller/sslCommerze/getInvoice";
+import { applyCSP } from '../utils/securityUtils';
 
 const paymentRouter = Router();
 
@@ -18,6 +19,10 @@ paymentRouter.post('/donation', donation)
 paymentRouter.post('/ipn', ipn)
 paymentRouter.post('/success', successPayment)
 paymentRouter.post('/fail', failPayment)
-paymentRouter.get('/invoice/:tran_id', getInvoice)
+paymentRouter.get('/invoice/:tran_id', applyCSP({
+    allowFonts: true,
+    allowImages: true,
+    allowInlineStyles: true
+}), getInvoice)
 export default paymentRouter;
 
