@@ -50,6 +50,7 @@ const organizationCheck_1 = __importDefault(require("./cron/organizationCheck"))
 const donationReminder_1 = __importDefault(require("./cron/donationReminder"));
 const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
+const oldBloodRequestRemove_1 = __importDefault(require("./cron/oldBloodRequestRemove"));
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
 // Trust proxy - required for Railway deployment behind proxy
@@ -128,4 +129,6 @@ exports.app.listen(PORT, () => {
     console.log('Organization check cron job scheduled');
     (0, donationReminder_1.default)();
     console.log('Donation reminder cron job scheduled');
+    (0, oldBloodRequestRemove_1.default)();
+    console.log('Old blood request remove cron job scheduled');
 });

@@ -52,10 +52,10 @@ const createUser = async (req, res) => {
     try {
         const encryptedPassword = await (0, encryptPass_1.default)(data.password);
         data.password = encryptedPassword;
-        await (0, sendOtp_1.default)(data === null || data === void 0 ? void 0 : data.email);
         const checkUniqueEmail = await userSchema_1.default.findOne({ email: data === null || data === void 0 ? void 0 : data.email });
         const checkUniquePhone = await userSchema_1.default.findOne({ phone: data === null || data === void 0 ? void 0 : data.phone });
         if (checkUniqueEmail) {
+            console.log(checkUniqueEmail);
             res.status(400).json({ success: false, message: "Email already exists" });
             return;
         }
@@ -63,6 +63,7 @@ const createUser = async (req, res) => {
             res.status(400).json({ success: false, message: "Phone number already exists" });
             return;
         }
+        await (0, sendOtp_1.default)(data === null || data === void 0 ? void 0 : data.email);
         exports.tempStoreUser.set(data === null || data === void 0 ? void 0 : data.email, data);
         res.status(200).json({ success: true, message: "OTP sent to email", email: data.email });
     }
