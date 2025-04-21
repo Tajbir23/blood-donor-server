@@ -13,7 +13,6 @@ import scheduleOrganizationCheck from './cron/organizationCheck'
 import scheduleDonationReminder from './cron/donationReminder'
 import morgan from 'morgan'
 import path from 'path'
-import scheduleOldBloodRequestRemove from './cron/oldBloodRequestRemove'
 const PORT = process.env.PORT || 4000
 
 export const app = express()
@@ -108,6 +107,4 @@ app.listen(PORT, () => {
     console.log('Organization check cron job scheduled');
     scheduleDonationReminder();
     console.log('Donation reminder cron job scheduled');
-    scheduleOldBloodRequestRemove();
-    console.log('Old blood request remove cron job scheduled');
 })

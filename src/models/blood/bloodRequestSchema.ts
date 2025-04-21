@@ -99,6 +99,7 @@ const bloodRequestSchema = new Schema<BloodRequestType>({
     timestamps: true
 })
 
+bloodRequestSchema.index({ createdAt: -1 }, { expireAfterSeconds: 60 * 60 * 24 * 3 });
 const bloodRequestModel = model("bloodRequest", bloodRequestSchema);
 
 export default bloodRequestModel;
