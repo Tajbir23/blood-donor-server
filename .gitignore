@@ -1,4 +1,7 @@
 .qodo
-.env
+
 node_modules
+
 uploads
+
+config.bat
