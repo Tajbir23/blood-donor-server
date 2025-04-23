@@ -8,10 +8,8 @@ const handleRoleChange_1 = __importDefault(require("../../../../handler/administ
 const manageRole = async (req, res) => {
     const { organizationId } = req.params;
     const { userId, targetRole } = req.body;
-    const adminRole = req.user.role;
+    const adminRole = req.role;
     const _id = req.user._id;
-    console.log("adminRole", adminRole);
-    console.log(req.body);
     try {
         // Check if user is trying to change their own role
         if (userId === _id) {

@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const verifyIsAdmin = async (req, res, next) => {
     const { role } = req.user;
-    console.log(role);
     if (role !== 'admin' && role !== 'superAdmin' && role !== 'moderator') {
         res.status(403).json({
             success: false,
@@ -10,6 +9,7 @@ const verifyIsAdmin = async (req, res, next) => {
         });
         return;
     }
+    req.role = role;
     next();
 };
 exports.default = verifyIsAdmin;

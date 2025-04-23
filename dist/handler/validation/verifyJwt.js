@@ -11,7 +11,7 @@ const verifyJwt = (req, res, next) => {
         console.log("verifyJwt.ts token", token);
         if (!token) {
             console.log("verifyJwt.ts", 401);
-            res.status(401).json({ message: 'অনুমতি নেই' });
+            res.status(401).json({ success: false, message: 'অনুমতি নেই' });
             return;
         }
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
@@ -21,7 +21,7 @@ const verifyJwt = (req, res, next) => {
     catch (error) {
         console.log(error);
         console.log("verifyJwt.ts error", 401);
-        res.status(401).json({ message: 'অবৈধ টোকেন' });
+        res.status(401).json({ success: false, message: 'অবৈধ টোকেন' });
     }
 };
 exports.default = verifyJwt;

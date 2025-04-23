@@ -8,7 +8,9 @@ const getDashboardData_1 = __importDefault(require("../../../controller/administ
 const verifyJwt_1 = __importDefault(require("../../../handler/validation/verifyJwt"));
 const verifyIsAdmin_1 = __importDefault(require("../../../handler/validation/verifyIsAdmin"));
 const getAllUsers_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getAllUsers"));
+const roleChangeUser_1 = __importDefault(require("../../../controller/administrator/system/dashboard/roleChangeUser"));
 const systemDashboardRoute = (0, express_1.Router)();
 systemDashboardRoute.get('/dashboard', verifyJwt_1.default, verifyIsAdmin_1.default, getDashboardData_1.default);
 systemDashboardRoute.get('/users', verifyJwt_1.default, verifyIsAdmin_1.default, getAllUsers_1.default);
+systemDashboardRoute.post('/role-change-user', verifyJwt_1.default, verifyIsAdmin_1.default, roleChangeUser_1.default);
 exports.default = systemDashboardRoute;

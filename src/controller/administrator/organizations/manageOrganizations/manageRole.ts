@@ -8,8 +8,7 @@ const manageRole = async (req: Request, res: Response) => {
     const adminRole = (req as any).role;
     const _id = (req as any).user._id;
 
-    console.log("adminRole", adminRole)
-    console.log(req.body)
+    
     try {
         // Check if user is trying to change their own role
         if (userId === _id) {
