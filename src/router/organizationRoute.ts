@@ -5,9 +5,6 @@ import { createImageUpload } from "../handler/fileUpload/imageUpload";
 import myOrganizations from "../controller/organization/myOrganizations";
 import allOrganizations from "../controller/organization/allOrganizations";
 import orgJoinRequest from "../controller/organization/orgJoinRequest";
-
-import manageOrgJoinReq from "../controller/administrator/organizations/manageOrganizations/manageOrgJoinReq";
-import verifyOrganizationAdmin from "../handler/validation/verifyOrganizationAdmin";
 import getMembers from "../controller/organization/getMembers";
 
 const organizationRouter = Router();
