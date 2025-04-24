@@ -12,7 +12,17 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "postinstall": "npm run build",
-    "optimize-images": "ts-node src/scripts/optimizeExistingImages.ts"
+    "optimize-images": "ts-node src/scripts/optimizeExistingImages.ts",
+    "start:dev": "pm2 start ecosystem.config.js --env development",
+    "start:prod": "pm2 start ecosystem.config.js --env production",
+    "stop": "pm2 stop ecosystem.config.js",
+    "restart": "pm2 restart ecosystem.config.js",
+    "status": "pm2 status",
+    "logs": "pm2 logs ecosystem.config.js",
+    "list": "pm2 list",
+    "watch:dev": "pm2 start ecosystem.config.js --env development --watch",
+    "watch:prod": "pm2 start ecosystem.config.js --env production --watch",
+    "monitor": "pm2 monit"
   },
   "keywords": [],
   "author": "",
