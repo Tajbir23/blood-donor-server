@@ -6,6 +6,7 @@ import paymentRouter from "./paymentRoute";
 import donorLeaderBoardRouter from "./donorLeaderBoard";
 import systemAdminRoute from "./administrator/system/route";
 import orgAdminRouter from "./administrator/organizations/orgAdminRoute";
+import homeRouter from "./home/homeRouter";
 
 
 const router = Router()
@@ -16,6 +17,8 @@ router.use('/organization', organizationRouter)
 router.use('/blood_request', bloodRequestRoute)
 router.use('/payment', paymentRouter)
 router.use('/donor-leaderboard', donorLeaderBoardRouter)
+
+router.use('/home', homeRouter)
 
 // system administrator routes
 router.use('/system', systemAdminRoute)
