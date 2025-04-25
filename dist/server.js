@@ -91,7 +91,7 @@ exports.app.use((0, cors_1.default)({
     credentials: true
 }));
 // Set up static file serving for uploads directory
-exports.app.use('/api/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
+exports.app.use('/uploads', express_1.default.static(path_1.default.join(process.cwd(), 'uploads')));
 // Default CSP header for routes that don't need inline scripts
 exports.app.use((req, res, next) => {
     // Skip if it's a route that will set its own CSP

@@ -7,10 +7,10 @@ const getInvoice = async (req: Request, res: Response) => {
         // Generate a random nonce for CSP
         const nonce = generateNonce();
 
-        const { tran_id } = req.params;
-        const donation = await MoneyDonation.findOne({ tran_id });
+    const { tran_id } = req.params;
+    const donation = await MoneyDonation.findOne({ tran_id });
         
-        if (!donation) {
+    if (!donation) {
             res.status(404).json({ message: "অনুদান খুঁজে পাওয়া যায়নি" });
             return;
         }

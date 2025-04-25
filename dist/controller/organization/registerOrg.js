@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const organizationSchema_1 = __importDefault(require("../../models/organization/organizationSchema"));
 const registerOrg = async (req, res) => {
     const organizationData = JSON.parse(req.body.organizationData);
+    console.log("organizationData", organizationData);
     const user = req.user;
     const imageUrl = res.locals.imageUrl;
     try {
@@ -21,6 +22,7 @@ const registerOrg = async (req, res) => {
         });
     }
     catch (error) {
+        console.log("error", error);
         res.status(500).json({
             success: false,
             message: "Organization creation failed",

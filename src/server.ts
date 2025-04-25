@@ -62,7 +62,7 @@ app.use(cors({
 }))
 
 // Set up static file serving for uploads directory
-app.use('/api/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Default CSP header for routes that don't need inline scripts
 app.use((req: Request, res: Response, next: NextFunction) => {

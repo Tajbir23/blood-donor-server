@@ -5,6 +5,7 @@ import organizationType from "../../types/organizationType";
 const registerOrg = async (req: Request, res: Response) => {
     const organizationData: organizationType = JSON.parse(req.body.organizationData);
     
+    console.log("organizationData",organizationData);
     const user = (req as any).user
     const imageUrl = res.locals.imageUrl;
 
@@ -20,6 +21,7 @@ const registerOrg = async (req: Request, res: Response) => {
             organization
         })
     } catch (error) {
+        console.log("error",error);
         res.status(500).json({
             success: false,
             message: "Organization creation failed",

@@ -11,6 +11,56 @@ const DEFAULT_QUALITY = 80;
 const DEFAULT_MAX_WIDTH = 1200;
 const DEFAULT_MAX_HEIGHT = 1200;
 
+// Function to generate a unique temporary file path
+const getTempFilePath = (originalPath: string, format: string): string => {
+    const dir = path.dirname(originalPath);
+    const filename = path.basename(originalPath, path.extname(originalPath));
+    const tempName = `${filename}_temp_${Date.now()}_${Math.floor(Math.random() * 10000)}.${format}`;
+    return path.join(dir, tempName);
+};
+
+// Function to safely rename files (with fallback to copy if rename fails)
+const safeRename = async (tempPath: string, targetPath: string): Promise<void> => {
+    try {
+        // Try rename first (fastest)
+        await fs.promises.rename(tempPath, targetPath);
+    } catch (error) {
+        // If rename fails (often due to cross-device links or permissions)
+        try {
+            // Try copy + delete approach
+            await fs.promises.copyFile(tempPath, targetPath);
+            // Try to delete temp file but don't fail if it doesn't work
+            try {
+                await fs.promises.unlink(tempPath);
+            } catch (unlinkError) {
+                console.warn(`Could not delete temporary file ${tempPath}: ${unlinkError.message}`);
+                // Continue execution even if we couldn't delete the temp file
+            }
+        } catch (copyError) {
+            throw copyError;
+        }
+    }
+};
+
+// Helper function to safely delete a file with retries for Windows
+const safeDelete = async (filePath: string, maxRetries = 3, delayMs = 100): Promise<boolean> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            await fs.promises.unlink(filePath);
+            return true; // Successfully deleted
+        } catch (error) {
+            if (attempt < maxRetries - 1) {
+                // Wait before retrying to give time for file handles to be released
+                await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)));
+                continue;
+            }
+            console.warn(`Could not delete file ${filePath} after ${maxRetries} attempts: ${error.message}`);
+            return false; // Failed to delete after all retries
+        }
+    }
+    return false;
+};
+
 // Function to optimize image using Sharp
 const optimizeImage = async (filePath: string, options: {
     quality?: number,
@@ -33,6 +83,15 @@ const optimizeImage = async (filePath: string, options: {
         const needsResize = metadata.width && metadata.width > maxWidth || 
                            metadata.height && metadata.height > maxHeight;
         
+        // Create a temp output path to avoid file locks
+        const tempOutputPath = getTempFilePath(filePath, format);
+        
+        // If we're changing format, we'll need a final path with new extension
+        const shouldChangeFormat = path.extname(filePath).slice(1).toLowerCase() !== format;
+        const finalOutputPath = shouldChangeFormat ? 
+            filePath.replace(/\.[^.]+$/, `.${format}`) : 
+            filePath;
+        
         // Set up Sharp pipeline
         let pipeline = sharp(filePath);
         
@@ -46,28 +105,74 @@ const optimizeImage = async (filePath: string, options: {
             });
         }
         
-        // Apply compression based on format
-        let outputBuffer;
-        const outputPath = filePath.replace(/\.[^.]+$/, `.${format}`);
-        
+        // Apply appropriate compression based on format
         if (format === 'jpeg') {
-            outputBuffer = await pipeline.jpeg({ quality }).toBuffer();
+            await pipeline.jpeg({ quality }).toFile(tempOutputPath);
         } else if (format === 'png') {
-            outputBuffer = await pipeline.png({ quality }).toBuffer();
+            await pipeline.png({ quality }).toFile(tempOutputPath);
         } else if (format === 'webp') {
-            outputBuffer = await pipeline.webp({ quality }).toBuffer();
+            await pipeline.webp({ quality }).toFile(tempOutputPath);
         }
         
-        // Save the optimized image
-        await fs.promises.writeFile(outputPath, outputBuffer);
+        // Get size info for optimization stats
+        const originalStats = await fs.promises.stat(filePath);
+        const optimizedStats = await fs.promises.stat(tempOutputPath);
         
-        // Delete the original file if the format changed
-        if (path.extname(filePath).slice(1).toLowerCase() !== format) {
-            await fs.promises.unlink(filePath);
+        // Only replace if we're saving space or changing format
+        if (optimizedStats.size < originalStats.size || shouldChangeFormat) {
+            try {
+                if (shouldChangeFormat) {
+                    // If we're changing format, we'll use the new path directly
+                    await safeRename(tempOutputPath, finalOutputPath);
+                    
+                    // Now try to delete the original with our robust method
+                    // Only try to delete if the paths are different
+                    if (finalOutputPath !== filePath) {
+                        // Give the system a moment to release any file handles
+                        // This is especially important on Windows
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Try to delete the original with retries
+                        const deleted = await safeDelete(filePath);
+                        if (!deleted) {
+                            console.warn(`Could not delete original file ${filePath} - it may need manual cleanup later`);
+                            
+                            // Schedule a cleanup attempt for later
+                            setTimeout(async () => {
+                                try {
+                                    if (fs.existsSync(filePath)) {
+                                        await fs.promises.unlink(filePath);
+                                        console.log(`Delayed cleanup successful for ${filePath}`);
+                                    }
+                                } catch (e) {
+                                    console.warn(`Delayed cleanup failed for ${filePath}: ${e.message}`);
+                                }
+                            }, 5000); // Try again after 5 seconds
+                        }
+                    }
+                } else {
+                    // If keeping the same format, replace the original
+                    await safeRename(tempOutputPath, filePath);
+                }
+            } catch (renameError) {
+                console.error(`Error replacing file: ${renameError.message}`);
+                // If we can't replace, just use the temp file
+                return tempOutputPath;
+            }
+        } else {
+            // If we're not saving space, delete the temp file and keep original
+            try {
+                await fs.promises.unlink(tempOutputPath);
+            } catch (unlinkError) {
+                console.warn(`Could not delete temporary file: ${unlinkError.message}`);
+            }
+            return filePath;
         }
         
-        // Return the new file path
-        return outputPath;
+        console.log(`Image optimized: ${path.basename(filePath)} → ${path.basename(finalOutputPath)} (${Math.round(optimizedStats.size / 1024)}KB)`);
+        
+        // Return the path to the optimized image
+        return finalOutputPath;
     } catch (error) {
         console.error('Error optimizing image:', error);
         return filePath; // Return original path if optimization fails
@@ -77,6 +182,7 @@ const optimizeImage = async (filePath: string, options: {
 // Create a factory function that returns the middleware with the desired field name
 const createImageUpload = (fieldName = 'profileImage', optimizationOptions = {}) => {
     return async (req: Request, res: Response, next: NextFunction) => {
+        console.log('Creating image upload middleware for field:', fieldName, optimizationOptions);
         // Create uploads directory if it doesn't exist
         const uploadDir = path.join(process.cwd(), 'uploads');
         if (!fs.existsSync(uploadDir)) {
@@ -88,6 +194,7 @@ const createImageUpload = (fieldName = 'profileImage', optimizationOptions = {})
                 cb(null, uploadDir);
             },
             filename: function (req, file, cb) {
+                console.log('File name:', file.originalname);
                 // Keep original extension and generate unique name
                 const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
                 const ext = path.extname(file.originalname);
@@ -138,7 +245,7 @@ const createImageUpload = (fieldName = 'profileImage', optimizationOptions = {})
                         res.locals.uploadedFile = req.file;
                         res.locals.imagePath = req.file.path;
                         res.locals.imageFilename = req.file.filename;
-                        res.locals.imageUrl = `/uploads/${req.file.filename}`;
+                        res.locals.imageUrl = `${process.env.BACKEND_URL}/uploads/${req.file.filename}`;
                         
                         console.log(`Image optimized: ${path.basename(originalPath)} → ${path.basename(optimizedPath)} (${Math.round(stats.size / 1024)}KB)`);
                     } catch (error) {
@@ -147,7 +254,7 @@ const createImageUpload = (fieldName = 'profileImage', optimizationOptions = {})
                         res.locals.uploadedFile = req.file;
                         res.locals.imagePath = req.file.path;
                         res.locals.imageFilename = req.file.filename;
-                        res.locals.imageUrl = `/uploads/${req.file.filename}`;
+                        res.locals.imageUrl = `${process.env.BACKEND_URL}/uploads/${req.file.filename}`;
                     }
                 } else {
                     console.log('No file uploaded or file rejected');
@@ -174,7 +281,7 @@ export const profileImageUpload = createImageUpload('profileImage', {
     maxWidth: 500,
     maxHeight: 500,
     quality: 85,
-    format: 'jpeg'
+    format: 'webp'
 });
 
 export const bannerImageUpload = createImageUpload('bannerImage', {
