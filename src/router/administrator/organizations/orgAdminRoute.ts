@@ -7,6 +7,8 @@ import addMember from "../../../controller/administrator/organizations/manageOrg
 import updateUserLastDonation from "../../../controller/administrator/organizations/user/UpdateUserLastDonation";
 import manageRole from "../../../controller/administrator/organizations/manageOrganizations/manageRole";
 import removeUser from "../../../controller/administrator/organizations/manageOrganizations/removeUser";
+import updateOrgCover from "../../../controller/administrator/organizations/manageOrganizations/updateOrgCover";
+import { organizationLogoUpload } from "../../../handler/fileUpload/imageUpload";
 
 const orgAdminRouter = Router()
 
@@ -16,5 +18,6 @@ orgAdminRouter.post('/add_member/:organizationId',verifyJwt, verifyOrganizationA
 orgAdminRouter.put('/update_last_donation/:organizationId',verifyJwt, verifyOrganizationAdmin, updateUserLastDonation)
 orgAdminRouter.post('/manage_role/:organizationId', verifyJwt, verifyOrganizationAdmin, manageRole)
 orgAdminRouter.post('/remove_member/:organizationId', verifyJwt, verifyOrganizationAdmin, removeUser)
+orgAdminRouter.put('/update_org_cover/:organizationId', verifyJwt, verifyOrganizationAdmin, organizationLogoUpload, updateOrgCover)
 
 export default orgAdminRouter;

@@ -291,6 +291,14 @@ export const bannerImageUpload = createImageUpload('bannerImage', {
     format: 'jpeg'
 });
 
+// Create optimized organization logo upload with appropriate settings
+export const organizationLogoUpload = createImageUpload('organization', {
+    maxWidth: 800,
+    maxHeight: 800,
+    quality: 85,
+    format: 'webp' // Using WebP for better compression while maintaining quality
+});
+
 // Export default middleware with 'profileImage' as the default field name
 export default createImageUpload();
 
