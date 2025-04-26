@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createImageUpload = exports.bannerImageUpload = exports.profileImageUpload = exports.thumbnailUpload = void 0;
+exports.createImageUpload = exports.organizationLogoUpload = exports.bannerImageUpload = exports.profileImageUpload = exports.thumbnailUpload = void 0;
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -269,6 +269,13 @@ exports.bannerImageUpload = createImageUpload('bannerImage', {
     maxHeight: 900,
     quality: 85,
     format: 'jpeg'
+});
+// Create optimized organization logo upload with appropriate settings
+exports.organizationLogoUpload = createImageUpload('organization', {
+    maxWidth: 800,
+    maxHeight: 800,
+    quality: 85,
+    format: 'webp' // Using WebP for better compression while maintaining quality
 });
 // Export default middleware with 'profileImage' as the default field name
 exports.default = createImageUpload();
