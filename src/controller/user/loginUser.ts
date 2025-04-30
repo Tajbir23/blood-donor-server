@@ -8,6 +8,7 @@ import findOrgRole from "../administrator/organizations/user/findOrgRole";
 
 const loginUser = async (req: Request, res: Response): Promise<void> => {
     const {identity, password} = req.body;
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
     try {
         if(!identity || !password) {
@@ -22,7 +23,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
             ]
         });
     
-        console.log(user)
+      
         if(user) {
             const checkPass = await verifyPass(password, user.password);
             if(checkPass) {
@@ -30,6 +31,9 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
                 const userId = user._id.toString();
                 const orgRole = await findOrgRole(userId);
                 const token = generateJwt(user.phone, user._id, user.role, orgRole);
+                user.token = token;
+                user.lastLoginIp = ip as string;
+                await user.save();
                 res.cookie("token", token, {httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "lax"});
                 res.status(200).json({success: true, message: "Login successful", user});
                 return;

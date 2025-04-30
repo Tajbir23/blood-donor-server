@@ -13,6 +13,7 @@ import updateLastDonation from "../controller/user/updateLastDonation";
 import searchBlood from "../controller/blood/searchBlood";
 import searchDonar from "../controller/user/searchDonar";
 import updateProfileImage from "../controller/user/updateProfileImage";
+import refreshToken from "../controller/user/refreshToken";
 
 
 const userRouter = Router();
@@ -29,4 +30,5 @@ userRouter.post('/update-last-donation', verifyJwt, updateLastDonation)
 userRouter.post("/donor/search", searchBlood)
 userRouter.get("/search-users", searchDonar)
 userRouter.put('/update-profile-image', verifyJwt, profileImageUpload, updateProfileImage)
+userRouter.get('/refresh-token', refreshToken)
 export default userRouter;

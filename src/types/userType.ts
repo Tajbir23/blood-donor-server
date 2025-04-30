@@ -37,6 +37,8 @@ interface UserType {
         };
         coordinates: number[];
     };
+    token: string;
+    lastLoginIp: string;
     fingerPrint: FingerprintDataType;
     createdAt: string;
     updatedAt: string;
