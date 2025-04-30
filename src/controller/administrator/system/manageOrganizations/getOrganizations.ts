@@ -58,14 +58,14 @@ const getOrganizations = async (req: Request, res: Response) => {
 
         const organizationsWithMemberCount = organizations.map(org => ({
             ...org.toObject(),
-            memberCount: memberCounts.find(mc => mc._id.equals(org._id))?.count || 0
+            membersCount: memberCounts.find(mc => mc._id.equals(org._id))?.count || 0
         }));
 
         const totalOrganizations = await organizationModel.countDocuments(query);
         const totalPages = Math.ceil(totalOrganizations / Number(limit));
 
         
-        res.status(200).json({ organizations, totalPages });
+        res.status(200).json({ organizations: organizationsWithMemberCount, totalPages });
     } catch (error) {
         console.log(error);
         res.status(500).json({ message: "Error getting organizations", error });
