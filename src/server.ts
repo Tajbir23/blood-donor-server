@@ -13,6 +13,9 @@ import scheduleOrganizationCheck from './cron/organizationCheck'
 import scheduleDonationReminder from './cron/donationReminder'
 import morgan from 'morgan'
 import path from 'path'
+import FacebookBotRouter from './router/facebook_bot/facebook_bot_Router'
+import setupGetStartedButton from './handler/facebookBotHandler/setUpGetStartedButton'
+import setupPersistentMenu from './handler/facebookBotHandler/setUpPersistantMenu'
 const PORT = process.env.PORT || 4000
 
 export const app = express()
@@ -120,9 +123,10 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     });
 });
 
+app.use('/webhook', FacebookBotRouter)
 export let activeUsers: string[] = []
 
-app.listen(PORT, () => {
+app.listen(PORT, async() => {
     console.log(`Server is running on http://localhost:${PORT}`)
     
     // Initialize cron jobs
@@ -130,4 +134,8 @@ app.listen(PORT, () => {
     console.log('Organization check cron job scheduled');
     scheduleDonationReminder();
     console.log('Donation reminder cron job scheduled');
+    await setupGetStartedButton();
+    console.log('Get Started button set successfully');
+    await setupPersistentMenu();
+    console.log('Persistent menu set successfully');
 })

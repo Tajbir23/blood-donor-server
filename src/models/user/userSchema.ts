@@ -2,6 +2,14 @@ import { model, Schema } from "mongoose";
 import UserType from "../../types/userType";
 
 const userSchema = new Schema<UserType>({
+    isFbConnected: {
+        type: Boolean,
+        default: false
+    },
+    fbId: {
+        type: String,
+        default: null
+    },
     email: { 
         type: String, 
         required: true, 

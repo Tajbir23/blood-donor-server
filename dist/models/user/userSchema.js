@@ -121,6 +121,10 @@ const userSchema = new mongoose_1.Schema({
             index: '2dsphere' // ✅ Ensure geospatial index
         }
     },
+    token: {
+        type: String,
+        default: null
+    },
     fingerPrint: {
         visitorId: { type: String, },
         userAgent: { type: String, },

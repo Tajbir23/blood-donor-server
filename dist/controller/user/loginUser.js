@@ -10,6 +10,7 @@ const addActiveUser_1 = __importDefault(require("../../handler/user/addActiveUse
 const findOrgRole_1 = __importDefault(require("../administrator/organizations/user/findOrgRole"));
 const loginUser = async (req, res) => {
     const { identity, password } = req.body;
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     try {
         if (!identity || !password) {
             res.status(400).json({ message: "ফোন নম্বর বা পাসওয়ার্ড প্রদত্ত করুন" });
@@ -21,7 +22,6 @@ const loginUser = async (req, res) => {
                 { email: identity }
             ]
         });
-        console.log(user);
         if (user) {
             const checkPass = await (0, verifyPass_1.default)(password, user.password);
             if (checkPass) {
@@ -29,6 +29,9 @@ const loginUser = async (req, res) => {
                 const userId = user._id.toString();
                 const orgRole = await (0, findOrgRole_1.default)(userId);
                 const token = (0, generateJwt_1.default)(user.phone, user._id, user.role, orgRole);
+                user.token = token;
+                user.lastLoginIp = ip;
+                await user.save();
                 res.cookie("token", token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: "lax" });
                 res.status(200).json({ success: true, message: "Login successful", user });
                 return;
