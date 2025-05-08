@@ -1,10 +1,11 @@
-import addressHandler from "./addressHandler"
+import findBloodFromFb from "./findBloodFromFb";
 import hasAddressId from "./hasAddressId";
+import hasBloodGroup from "./hasBloodGroup";
 import quickReply from "./quickReply";
 
-const handleFbBotMessage = async (received_text: string, received_postback: string, psId: string, addressType?: 'division' | 'district' | 'thana') => {
+const handleFbBotMessage = async (received_text: string, received_postback: string, psId: string, quickReplyType?: string) => {
     try {
-        console.log("Handling message:", received_text, received_postback, "type:", addressType, "for PSID:", psId);
+        console.log("Handling message:", received_text, received_postback, "type:", quickReplyType, "for PSID:", psId);
         
         // Validate PSID
         if (!psId || psId === "undefined") {
@@ -21,15 +22,19 @@ const handleFbBotMessage = async (received_text: string, received_postback: stri
             return;
         }
 
-        if (received_text === "Find Blood" || received_postback === "FIND_BLOOD") {
+        if (received_text === "Find Blood" || received_postback === "FIND_BLOOD" || quickReplyType === "findBlood") {
             // Starting the flow, no addressId needed
-            await addressHandler(psId, "Select division", undefined, addressType);
+            await findBloodFromFb(psId, "Select division", undefined, quickReplyType);
             return;
         } else if (hasAddressId(received_text)) {
             // Pass the received_text as addressId and the addressType
-            await addressHandler(psId, "Select area", received_text, addressType);
+            
+            await findBloodFromFb(psId, "Select area", received_text, quickReplyType);
             return;
-        } else {
+        } else if (hasBloodGroup(received_postback) || hasBloodGroup(received_text) || quickReplyType === "searchDonors") {
+            await findBloodFromFb(psId, "Select blood group", received_text, quickReplyType, received_postback);
+            return;
+        }else {
             await quickReply(
                 psId, 
                 "Invalid input. Please try again.", 

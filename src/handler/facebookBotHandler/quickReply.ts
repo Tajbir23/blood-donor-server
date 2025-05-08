@@ -2,7 +2,7 @@ import axios from "axios";
 import retryWithBackoff from "../../utils/retryWithBackoff";
 
 
-const quickReply = async (psId: string, title: string, replies: string[], type?: 'division' | 'district' | 'thana') => {
+const quickReply = async (psId: string, title: string, replies: string[], type?: 'division' | 'district' | 'thana' | 'bloodGroup' | 'searchDonors' | 'cancel') => {
     try {
         // Validate psId
         if (!psId || psId === "undefined") {

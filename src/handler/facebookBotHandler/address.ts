@@ -3,7 +3,10 @@ import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
 export const userAdressMap = new Map<string, {
     divisionId: string,
     districtId: string,
-    thanaId: string
+    thanaId: string,
+    latitude: string,
+    longitude: string,
+    bloodGroup?: string
 }>();
 
 // Return array of objects with id for divisions
@@ -36,7 +39,9 @@ export const getThana = (districtId: string, divisionId: string) => {
         district.id === districtId
     )?.thanas.map((thana) => {
         return {
-            id: thana.id
+            id: thana.id,
+            latitude: thana.latitude,
+            longitude: thana.longitude
         }
     }) || [];
     

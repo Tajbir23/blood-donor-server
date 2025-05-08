@@ -1,7 +1,8 @@
 import userModel from "../../models/user/userSchema"
 
 const findNearAvailableDonor = async(latitude: number, longitude: number, bloodGroup: string) => {
-    
+
+    console.log("latitude", latitude, "longitude", longitude, "bloodGroup", bloodGroup, "findNearAvailableDonor");
     // Calculate date 4 months ago
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
@@ -42,6 +43,8 @@ const findNearAvailableDonor = async(latitude: number, longitude: number, bloodG
                 }
             ]
         }).lean();
+
+        console.log("donors", donors);
 
         // Calculate distance for each donor
         const donorsWithDistance = donors.map(donor => {

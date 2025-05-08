@@ -36,11 +36,12 @@ const chatBot = async (req: Request, res: Response) => {
                 
                 let quickReplyData = null;
                 let quickReplyType = null;
-                
+
                 if (quickReply) {
                     try {
                         quickReplyData = JSON.parse(quickReply);
                         quickReplyType = quickReplyData?.type;
+                        console.log("quickReplyData", quickReplyData, "quickReplyType", quickReplyType);
                     } catch (error) {
                         console.error("Error parsing quick reply payload:", error);
                     }
