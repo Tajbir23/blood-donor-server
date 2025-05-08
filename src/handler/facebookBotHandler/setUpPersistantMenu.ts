@@ -20,6 +20,11 @@ const setupPersistentMenu = async () => {
                   title: "Register",
                   payload: "REGISTER",
                 },
+                {
+                  type: "postback",
+                  title: "Last Donation Date",
+                  payload: "LAST_DONATION_DATE",
+                }
               ],
             },
           ],

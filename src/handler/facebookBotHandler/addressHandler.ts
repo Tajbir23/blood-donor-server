@@ -1,98 +1,199 @@
-import { getDistrict, getDivision, getThana, userAdressMap } from "./address";
+import { userAdressMap, getDivision, getDistrict, getThana } from "./address";
 import quickReply from "./quickReply";
+import hasAddressId from "./hasAddressId";
+import sendMessageToFbUser from "./sendMessageToFbUser";
 
-const addressHandler = async(psId : string, title: string, received_text?: string, quickReplyType?: string) => {
-    const userData = await userAdressMap.get(psId);
-
-    // If starting fresh or showing divisions
-    if(!received_text || quickReplyType === "division"){
-        const divisions = await getDivision();
-        await quickReply(psId, "Select division", divisions.map(div => div.id));
-        return;
-    }
-
-    // Handle division selection
-    if(!userData || !userData.divisionId) {
-        const divisions = await getDivision();
-        const division = divisions.find(div => div.id === received_text);
-        
-        if(division) {
-            // Save division selection
-            userAdressMap.set(psId, {
-                divisionId: division.id,
-                districtId: "",
-                thanaId: "",
-                latitude: "",
-                longitude: ""
-            });
-            
-            // Show districts for selected division
-            const districts = await getDistrict(division.id);
-            if(districts && districts.length > 0) {
-                await quickReply(psId, "Select district", districts.map(district => district.id), "district");
-            } else {
-                await quickReply(psId, "No districts found for this division", divisions.map(div => div.id), "division");
-            }
-        } else {
-            // Invalid division selection
-            await quickReply(psId, "Invalid division. Please select again", divisions.map(div => div.id), "division");
-        }
-        return;
-    }
-
-    // Handle district selection
-    if(userData && userData.divisionId && (!userData.districtId || quickReplyType === "district")) {
-        const districts = await getDistrict(userData.divisionId);
-        const district = districts.find(district => district.id === received_text);
-        
-        if(district) {
-            // Save district selection
-            userAdressMap.set(psId, {
-                divisionId: userData.divisionId,
-                districtId: district.id,
-                thanaId: "",
-                latitude: "",
-                longitude: ""
-            });
-            
-            // Show thanas for selected district
-            const thanas = await getThana(district.id, userData.divisionId);
-            if(thanas && thanas.length > 0) {
-                await quickReply(psId, "Select area", thanas.map(thana => thana.id), "thana");
-            } else {
-                await quickReply(psId, "No areas found for this district", districts.map(district => district.id), "district");
-            }
-        } else {
-            // Invalid district selection
-            await quickReply(psId, "Invalid district. Please select again", districts.map(district => district.id), "district");
-        }
-        return;
-    }
-
-    // Handle thana selection
-    if(userData && userData.divisionId && userData.districtId && (quickReplyType === "thana" || !quickReplyType)) {
-        const thanas = await getThana(userData.districtId, userData.divisionId);
-        const thana = thanas.find(thana => thana.id === received_text);
-        
-        if(thana) {
-            // Save thana selection
-            userAdressMap.set(psId, {
-                divisionId: userData.divisionId,
-                districtId: userData.districtId,
-                thanaId: thana.id,
-                latitude: thana.latitude,
-                longitude: thana.longitude
-            });
-            
-            // Thana selected, proceed with the next step
-            // await quickReply(psId, "Select blood group", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], "bloodGroup");
-            // await quickReply(psId, "Location selected successfully! What would you like to do next?", ["Search Donors", "Cancel"]);
-        } else {
-            // Invalid thana selection
-            await quickReply(psId, "Invalid area. Please select again", thanas.map(thana => thana.id), "thana");
-        }
-        return;
-    }
+interface UserAddressData {
+    divisionId?: string;
+    districtId?: string;
+    thanaId?: string;
+    latitude?: string;
+    longitude?: string;
+    bloodGroup?: string;
+    fullName?: string;
+    flowType?: "register" | "findBlood";
 }
-    
+
+const addressHandler = async (psId: string, title: string, selectedId?: string, quickReplyType?: string) => {
+    try {
+        console.log("Address Handler:", { psId, title, selectedId, quickReplyType });
+        
+        // Get current user data or initialize
+        let userData = userAdressMap.get(psId) || {
+            divisionId: "",
+            districtId: "",
+            thanaId: "",
+            latitude: "",
+            longitude: "",
+            flowType: undefined as "register" | "findBlood" | undefined
+        } as UserAddressData;
+        
+        // Determine the flow type - this is critical for routing messages correctly
+        if (quickReplyType === "findBlood" || quickReplyType?.includes("find")) {
+            userData.flowType = "findBlood";
+        } else if (!userData.flowType) {
+            userData.flowType = "register"; // Default to register if no flow type specified
+        }
+        
+        // Add debug logging to see what flow we're in
+        console.log(`AddressHandler for ${psId} - Flow: ${userData.flowType}`);
+        
+        // Always save the flow type to ensure it's preserved
+        userAdressMap.set(psId, userData);
+        
+        // Handle initial state - show divisions
+        if (!selectedId) {
+            const divisions = await getDivision();
+            await quickReply(
+                psId, 
+                title, 
+                divisions.map(div => div.id),
+                // Preserve the flow type in the quickReplyType
+                userData.flowType === "findBlood" ? "division" : "division"
+            );
+            return;
+        }
+        
+        // Handle division selection
+        if (quickReplyType === "division") {
+            // Save division ID while preserving flow type
+            userData.divisionId = selectedId;
+            userAdressMap.set(psId, userData);
+            
+            // Get districts for selected division
+            const districts = await getDistrict(selectedId);
+            
+            // Send quick reply with districts
+            await quickReply(
+                psId, 
+                "জেলা নির্বাচন করুন", 
+                districts.map(district => district.id),
+                "district"
+            );
+            return;
+        }
+        
+        // Handle district selection
+        if (quickReplyType === "district") {
+            // Save district ID while preserving flow type
+            userData.districtId = selectedId;
+            userAdressMap.set(psId, userData);
+            
+            // Get thanas for selected district
+            const thanas = await getThana(selectedId, userData.divisionId);
+            
+            // Send quick reply with thanas
+            await quickReply(
+                psId, 
+                "থানা/উপজেলা নির্বাচন করুন", 
+                thanas.map(thana => thana.id),
+                "thana"
+            );
+            return;
+        }
+        
+        // Handle thana selection 
+        if (quickReplyType === "thana") {
+            // Get thanas to find the one with matching ID
+            const thanas = await getThana(userData.districtId, userData.divisionId);
+            const selectedThana = thanas.find(thana => thana.id === selectedId);
+            
+            if (selectedThana) {
+                // Update user data with thana info while preserving flow type
+                userData.thanaId = selectedId;
+                userData.latitude = selectedThana.latitude;
+                userData.longitude = selectedThana.longitude;
+                userAdressMap.set(psId, userData);
+                
+                // Success message
+                await sendMessageToFbUser(
+                    psId, 
+                    `ঠিকানা সংরক্ষণ করা হয়েছে: ${userData.divisionId}, ${userData.districtId}, ${userData.thanaId}`
+                );
+                
+                console.log(`Saved address for ${psId}:`, userData);
+            } else {
+                // Error message if thana not found
+                await sendMessageToFbUser(
+                    psId, 
+                    "দুঃখিত, আপনার নির্বাচিত এলাকা খুঁজে পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।"
+                );
+                
+                // Restart with divisions
+                const divisions = await getDivision();
+                await quickReply(
+                    psId, 
+                    "আপনার বিভাগ নির্বাচন করুন:", 
+                    divisions.map(div => div.id),
+                    "division"
+                );
+            }
+            return;
+        }
+        
+        // For any direct address ID (fallback)
+        if (hasAddressId(selectedId)) {
+            // Try to determine what level we're at based on current user data
+            if (!userData.divisionId) {
+                // Division selection while preserving flow type
+                userData.divisionId = selectedId;
+                userAdressMap.set(psId, userData);
+                
+                const districts = await getDistrict(selectedId);
+                await quickReply(
+                    psId, 
+                    "জেলা নির্বাচন করুন", 
+                    districts.map(district => district.id),
+                    "district"
+                );
+                return;
+            } else if (!userData.districtId) {
+                // District selection while preserving flow type
+                userData.districtId = selectedId;
+                userAdressMap.set(psId, userData);
+                
+                const thanas = await getThana(selectedId, userData.divisionId);
+                await quickReply(
+                    psId, 
+                    "থানা/উপজেলা নির্বাচন করুন", 
+                    thanas.map(thana => thana.id),
+                    "thana"
+                );
+                return;
+            } else if (!userData.thanaId) {
+                // Thana selection while preserving flow type
+                const thanas = await getThana(userData.districtId, userData.divisionId);
+                const selectedThana = thanas.find(thana => thana.id === selectedId);
+                
+                if (selectedThana) {
+                    userData.thanaId = selectedId;
+                    userData.latitude = selectedThana.latitude;
+                    userData.longitude = selectedThana.longitude;
+                    userAdressMap.set(psId, userData);
+                    
+                    await sendMessageToFbUser(
+                        psId, 
+                        `ঠিকানা সংরক্ষণ করা হয়েছে: ${userData.divisionId}, ${userData.districtId}, ${userData.thanaId}`
+                    );
+                    
+                    console.log(`Saved address for ${psId}:`, userData);
+                } else {
+                    await sendMessageToFbUser(
+                        psId, 
+                        "দুঃখিত, আপনার নির্বাচিত এলাকা খুঁজে পাওয়া যায়নি।"
+                    );
+                }
+                return;
+            }
+        }
+        
+    } catch (error) {
+        console.error("Error in addressHandler:", error);
+        await sendMessageToFbUser(
+            psId, 
+            "দুঃখিত, আপনার ঠিকানা সংরক্ষণ করার সময় একটি ত্রুটি ঘটেছে। অনুগ্রহ করে আবার চেষ্টা করুন।"
+        );
+    }
+};
+
 export default addressHandler;

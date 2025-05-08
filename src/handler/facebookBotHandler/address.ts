@@ -1,49 +1,43 @@
 import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
 
-export const userAdressMap = new Map<string, {
-    divisionId: string,
-    districtId: string,
-    thanaId: string,
-    latitude: string,
-    longitude: string,
-    bloodGroup?: string
-}>();
+interface UserAddressData {
+    divisionId?: string;
+    districtId?: string;
+    thanaId?: string;
+    latitude?: string;
+    longitude?: string;
+    bloodGroup?: string;
+    fullName?: string;
+    flowType?: "register" | "findBlood";
+}
+
+export const userAdressMap = new Map<string, UserAddressData>();
 
 // Return array of objects with id for divisions
-export const getDivision = () => {
-    return bangladeshGeoData.divisions.map((division) => {
-        return {
-            id: division.id
-        }
-    })
+export const getDivision = async () => {
+    return bangladeshGeoData.divisions;
 }
 
 // Return array of objects with id for districts
-export const getDistrict = (divisionId: string) => {
-    const districts = bangladeshGeoData.divisions.find((division) => 
-        division.id === divisionId
-    )?.districts.map((district) => {
-        return {
-            id: district.id
-        }
-    }) || [];
-    
-    return districts;
+export const getDistrict = async (divisionId: string) => {
+    const division = bangladeshGeoData.divisions.find(division => division.id === divisionId);
+    return division ? division.districts : [];
 }
 
 // Return array of objects with id for thanas
-export const getThana = (districtId: string, divisionId: string) => {
-    const thanas = bangladeshGeoData.divisions.find((division) => 
-        division.id === divisionId
-    )?.districts.find((district) => 
-        district.id === districtId
-    )?.thanas.map((thana) => {
-        return {
-            id: thana.id,
-            latitude: thana.latitude,
-            longitude: thana.longitude
-        }
-    }) || [];
+export const getThana = async (districtId: string, divisionId?: string) => {
+    let district;
     
-    return thanas;
+    if (divisionId) {
+        const division = bangladeshGeoData.divisions.find(division => division.id === divisionId);
+        district = division?.districts.find(district => district.id === districtId);
+    } else {
+        // Search across all divisions if divisionId is not provided
+        for (const division of bangladeshGeoData.divisions) {
+            district = division.districts.find(district => district.id === districtId);
+            if (district) break;
+        }
+    }
+    
+    return district ? district.thanas : [];
 }
