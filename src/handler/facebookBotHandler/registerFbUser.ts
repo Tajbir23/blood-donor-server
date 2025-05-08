@@ -1,6 +1,7 @@
 import axios from "axios";
 import { userAdressMap, getDivision, getDistrict, getThana } from "./address";
 import quickReply from "./quickReply";
+import FbUserModel from "../../models/user/fbUserSchema";
 
 interface FacebookUserProfile {
     first_name: string;
@@ -185,6 +186,29 @@ const registerFbUser = async (psId: string, received_text: string, received_post
                         ...updatedUserData,
                         flowType: undefined
                     });
+                }
+                // if not found then create new fb user
+                const fbUser = await FbUserModel.findOne({ psId });
+                if (!fbUser) {
+                    const latitude = updatedUserData?.latitude ? parseFloat(updatedUserData?.latitude) : 0;
+                    const longitude = updatedUserData?.longitude ? parseFloat(updatedUserData?.longitude) : 0;
+                    const newFbUser = await FbUserModel.create({
+                        psId,
+                        fullName: updatedUserData?.fullName,
+                        bloodGroup: updatedUserData?.bloodGroup,
+                        divisionId: updatedUserData?.divisionId,
+                        districtId: updatedUserData?.districtId,
+                        thanaId: updatedUserData?.thanaId,
+                        latitude,
+                        longitude,
+                        location: {
+                            type: "Point",
+                            coordinates: [longitude, latitude]
+                        }
+                    });
+                    await newFbUser.save();
+                    console.log("New FB User created:", newFbUser);
+                    await userAdressMap.delete(psId);
                 }
             } else if (received_text === "তথ্য পরিবর্তন করুন") {
                 // Start registration process again
