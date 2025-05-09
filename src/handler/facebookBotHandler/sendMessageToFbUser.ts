@@ -52,6 +52,41 @@ const sendUrlButtonToFbUser = async (psId: string, message: string, buttonText: 
 };
 
 /**
+ * Send a message with multiple URL buttons to a Facebook user
+ */
+const sendMultipleUrlButtonToFbUser = async (psId: string, message: string, buttons: Array<{
+    title: string;
+    url: string;
+}>) => {
+    try {
+        await axios.post(fbBotBaseUrl, {
+            recipient: {
+                id: psId
+            },
+            message: {
+                attachment: {
+                    type: "template",
+                    payload: {
+                        template_type: "button",
+                        text: message,
+                        buttons: buttons.map(button => ({
+                            type: "web_url",
+                            url: button.url,
+                            title: button.title,
+                            webview_height_ratio: "full"
+                        }))
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error("Error sending multiple URL buttons:", error);
+    }
+};
+
+
+
+/**
  * Send a generic template with multiple URL buttons
  */
 const sendGenericTemplate = async (psId: string, elements: Array<{
@@ -93,5 +128,5 @@ const sendGenericTemplate = async (psId: string, elements: Array<{
     }
 };
 
-export { sendUrlButtonToFbUser, sendGenericTemplate };
+export { sendUrlButtonToFbUser, sendGenericTemplate, sendMultipleUrlButtonToFbUser };
 export default sendMessageToFbUser;

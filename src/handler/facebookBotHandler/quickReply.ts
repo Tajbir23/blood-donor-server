@@ -10,7 +10,6 @@ const quickReply = async (psId: string, title: string, replies: string[], type?:
             return;
         }
 
-        console.log(`Sending quick reply to ${psId}: ${title}`);
         
         const response = await retryWithBackoff(() => 
             axios.post(

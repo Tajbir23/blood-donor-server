@@ -2,6 +2,7 @@ import axios from "axios";
 import { userAdressMap, getDivision, getDistrict, getThana } from "./address";
 import quickReply from "./quickReply";
 import FbUserModel from "../../models/user/fbUserSchema";
+import sendMessageToFbUser, { sendMultipleUrlButtonToFbUser } from "./sendMessageToFbUser";
 
 interface FacebookUserProfile {
     first_name: string;
@@ -44,7 +45,19 @@ const getUserProfile = async (psId: string) => {
 const registerFbUser = async (psId: string, received_text: string, received_postback: string, quickReplyType?: string) => {
     try {
         console.log("Register FB User:", { psId, received_text, received_postback, quickReplyType });
-        
+        const fbUser = await FbUserModel.findOne({ psId });
+
+        if(fbUser){
+            await sendMessageToFbUser(psId, 'ইতোমধ্যে আপনার ফেসবুক অ্যাকাউন্টে রেজিস্ট্রেশন সম্পন্ন হয়েছে। আমাদের ওয়েবসাইটে লগইন করুন অথবা রেজিস্ট্রেশন করুন।')
+            await sendMultipleUrlButtonToFbUser(psId, 'আমাদের ওয়েবসাইটে লগইন করুণ অথবা রেজিস্টার করুন', [{
+                title: "ওয়েবসাইটে লগইন করুন",
+                url: `${process.env.FRONTEND_URL}/login`
+            },{
+                title: "ওয়েবসাইটে রেজিস্ট্রেশন করুন",
+                url: `${process.env.FRONTEND_URL}/register`
+            }])
+            return
+        }
         // Initialize or get existing user data
         const userData = userAdressMap.get(psId) || {
             divisionId: "",
@@ -160,6 +173,7 @@ const registerFbUser = async (psId: string, received_text: string, received_post
             // Show confirmation with all collected data
             const updatedUserData = userAdressMap.get(psId);
             
+            await sendMessageToFbUser(psId, `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData?.fullName}\nরক্তের গ্রুপ: ${updatedUserData?.bloodGroup}\nবিভাগ: ${updatedUserData?.divisionId}\nজেলা: ${updatedUserData?.districtId}\nথানা: ${updatedUserData?.thanaId}`)
             await quickReply(
                 psId,
                 `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData?.fullName}\nরক্তের গ্রুপ: ${updatedUserData?.bloodGroup}\nবিভাগ: ${updatedUserData?.divisionId}\nজেলা: ${updatedUserData?.districtId}\nথানা: ${updatedUserData?.thanaId}`,
@@ -189,6 +203,8 @@ const registerFbUser = async (psId: string, received_text: string, received_post
                 }
                 // if not found then create new fb user
                 const fbUser = await FbUserModel.findOne({ psId });
+                
+                
                 if (!fbUser) {
                     const latitude = updatedUserData?.latitude ? parseFloat(updatedUserData?.latitude) : 0;
                     const longitude = updatedUserData?.longitude ? parseFloat(updatedUserData?.longitude) : 0;
@@ -207,8 +223,17 @@ const registerFbUser = async (psId: string, received_text: string, received_post
                         }
                     });
                     await newFbUser.save();
-                    console.log("New FB User created:", newFbUser);
+                    
                     await userAdressMap.delete(psId);
+
+                    await sendMultipleUrlButtonToFbUser(psId, 'আমাদের ওয়েবসাইটে লগইন করুণ অথবা রেজিস্টার করুন', [{
+                        title: "ওয়েবসাইটে লগইন করুন",
+                        url: `${process.env.FRONTEND_URL}/login`
+                    },{
+                        title: "ওয়েবসাইটে রেজিস্ট্রেশন করুন",
+                        url: `${process.env.FRONTEND_URL}/register`
+                    }])
+        
                 }
             } else if (received_text === "তথ্য পরিবর্তন করুন") {
                 // Start registration process again
