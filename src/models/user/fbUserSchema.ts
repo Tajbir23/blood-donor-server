@@ -27,6 +27,10 @@ const fbUserSchema = new Schema<FbUserType>({
         type: String,
         required: true
     },
+    lastDonationDate: {
+        type: Date,
+        default: null
+    },
     latitude: {
         type: Number,
         required: true

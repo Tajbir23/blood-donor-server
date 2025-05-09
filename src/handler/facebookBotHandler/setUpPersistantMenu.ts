@@ -22,8 +22,18 @@ const setupPersistentMenu = async () => {
                 },
                 {
                   type: "postback",
-                  title: "Last Donation Date",
-                  payload: "LAST_DONATION_DATE",
+                  title: "Update Last Donation Date",
+                  payload: "UPDATE_LAST_DONATION_DATE",
+                },
+                {
+                  type: "postback",
+                  title: "Donate Blood",
+                  payload: "DONATE_BLOOD",
+                },
+                {
+                  type: "postback",
+                  title: "Request for Blood",
+                  payload: "REQUEST_FOR_BLOOD",
                 }
               ],
             },

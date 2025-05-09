@@ -5,6 +5,7 @@ interface FbUserType {
     divisionId: string;
     districtId: string;
     thanaId: string;
+    lastDonationDate: Date
     latitude: number;
     longitude: number;
     location: {
