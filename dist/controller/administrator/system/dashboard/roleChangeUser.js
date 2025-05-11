@@ -22,7 +22,7 @@ const roleChangeUser = async (req, res) => {
     if (isPermission) {
         try {
             if (newRole === "superAdmin") {
-                await userSchema_1.default.findByIdAndUpdate(userId, { role: newRole });
+                await userSchema_1.default.findByIdAndUpdate(userId, { role: newRole, isVerified: true });
                 await userSchema_1.default.findOneAndUpdate({ role: "superAdmin" }, { role: "admin" });
                 res.status(200).json({
                     success: true,
@@ -31,7 +31,7 @@ const roleChangeUser = async (req, res) => {
                 return;
             }
             if (adminRole === "admin") {
-                await userSchema_1.default.findByIdAndUpdate(userId, { role: newRole });
+                await userSchema_1.default.findByIdAndUpdate(userId, { role: newRole, isVerified: true });
                 res.status(200).json({
                     success: true,
                     message: "রোল পরিবর্তন সফলভাবে হয়েছে"
