@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const fbUserSchema_1 = __importDefault(require("../../models/user/fbUserSchema"));
 const findNearFbDonar = async (latitude, longitude, bloodGroup) => {
+    console.log("Finding near FB donar with latitude:", latitude, "longitude:", longitude, "bloodGroup:", bloodGroup);
     // calculate 4 months ago
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);

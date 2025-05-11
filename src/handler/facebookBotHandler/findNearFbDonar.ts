@@ -1,6 +1,7 @@
 import FbUserModel from "../../models/user/fbUserSchema";
 
 const findNearFbDonar = async (latitude: number, longitude: number, bloodGroup: string) => {
+    console.log("Finding near FB donar with latitude:", latitude, "longitude:", longitude, "bloodGroup:", bloodGroup);
     // calculate 4 months ago
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
