@@ -50,6 +50,9 @@ const organizationCheck_1 = __importDefault(require("./cron/organizationCheck"))
 const donationReminder_1 = __importDefault(require("./cron/donationReminder"));
 const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
+const facebook_bot_Router_1 = __importDefault(require("./router/facebook_bot/facebook_bot_Router"));
+const setUpGetStartedButton_1 = __importDefault(require("./handler/facebookBotHandler/setUpGetStartedButton"));
+const setUpPersistantMenu_1 = __importDefault(require("./handler/facebookBotHandler/setUpPersistantMenu"));
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
 // Trust proxy - required for Railway deployment behind proxy
@@ -139,12 +142,17 @@ exports.app.use((err, req, res, next) => {
         error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
     });
 });
+exports.app.use('/webhook', facebook_bot_Router_1.default);
 exports.activeUsers = [];
-exports.app.listen(PORT, () => {
+exports.app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     // Initialize cron jobs
     (0, organizationCheck_1.default)();
     console.log('Organization check cron job scheduled');
     (0, donationReminder_1.default)();
     console.log('Donation reminder cron job scheduled');
+    await (0, setUpGetStartedButton_1.default)();
+    console.log('Get Started button set successfully');
+    await (0, setUpPersistantMenu_1.default)();
+    console.log('Persistent menu set successfully');
 });

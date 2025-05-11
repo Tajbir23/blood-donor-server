@@ -1,7 +1,7 @@
-import { model, Schema } from "mongoose";
-import FbUserType from "../../types/fbUserType";
-
-const fbUserSchema = new Schema<FbUserType>({
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const mongoose_1 = require("mongoose");
+const fbUserSchema = new mongoose_1.Schema({
     psId: {
         type: String,
         required: true,
@@ -51,10 +51,7 @@ const fbUserSchema = new Schema<FbUserType>({
         }
     }
 }, { timestamps: true });
-
 // Create 2dsphere index for geospatial queries
 fbUserSchema.index({ location: "2dsphere" });
-
-const FbUserModel = model<FbUserType>('FbUser', fbUserSchema);
-
-export default FbUserModel;
+const FbUserModel = (0, mongoose_1.model)('FbUser', fbUserSchema);
+exports.default = FbUserModel;

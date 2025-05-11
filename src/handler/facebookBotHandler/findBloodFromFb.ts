@@ -177,7 +177,7 @@ const findBloodFromFb = async (psId: string, title: string, received_text: strin
             userAdressMap.delete(psId);
             
             // Return to main menu
-            await quickReply(psId, "আর কিছু করতে চান?", ["Find Blood", "Register"]);
+            await quickReply(psId, "আর কিছু করতে চান?", ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]);
             return;
         }
         
@@ -186,7 +186,7 @@ const findBloodFromFb = async (psId: string, title: string, received_text: strin
             console.log("Cancelling blood search");
             userAdressMap.delete(psId);
             await sendMessageToFbUser(psId, "রক্তদাতা খোঁজা বাতিল করা হয়েছে।");
-            await quickReply(psId, "আপনি কি করতে চান?", ["Find Blood", "Register"]);
+            await quickReply(psId, "আপনি কি করতে চান?", ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]);
             return;
         }
         

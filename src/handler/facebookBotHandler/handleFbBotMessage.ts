@@ -34,7 +34,7 @@ const handleFbBotMessage = async (received_text: string, received_postback: stri
             await quickReply(
                 psId,
                 "👋 Welcome to LifeDrop! What would you like to do?",
-                ["Find Blood", "Register"]
+                ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]
             );
             return;
         }

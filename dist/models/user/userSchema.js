@@ -2,6 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = require("mongoose");
 const userSchema = new mongoose_1.Schema({
+    isFbConnected: {
+        type: Boolean,
+        default: false
+    },
+    fbId: {
+        type: String,
+        default: null
+    },
     email: {
         type: String,
         required: true,
