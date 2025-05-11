@@ -1,7 +1,6 @@
 import userModel from "../../models/user/userSchema"
 
 const findNearAvailableDonor = async(latitude: number, longitude: number, bloodGroup: string) => {
-
     // Calculate date 4 months ago
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);

@@ -51,6 +51,10 @@ const manageUser = async (req: Request, res: Response) => {
             user.isBanned = false;
         }
 
+        if(action === "verify") {
+            user.isVerified = true;
+        }
+
         await user.save();
 
         res.status(200).json({
