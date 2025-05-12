@@ -42,6 +42,7 @@ const requestForBlood = async (req: Request, res: Response) => {
                 `📍 অবস্থান:\n` +
                 `   🏙️ জেলা: ${data.seekerDistrictId}\n` +
                 `   🏘️ থানা: ${data.seekerThanaId}\n\n` +
+                `🏥 হাসপাতাল: ${data.hospitalName}\n` +
                 `⏰ সময়সূচী:\n` +
                 `   📅 তারিখ: ${data.requredDate}\n` +
                 `   🕒 সময়: ${data.requredTime}\n\n` +
