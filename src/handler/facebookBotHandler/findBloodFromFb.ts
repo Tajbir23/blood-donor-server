@@ -145,10 +145,15 @@ const findBloodFromFb = async (psId: string, title: string, received_text: strin
             await sendMessageToFbUser(psId, `${updatedUserData.bloodGroup} রক্তের গ্রুপের দাতা খোঁজা হচ্ছে...`);
             
             try {
-                const donors = await findNearAvailableDonor(latitude, longitude, updatedUserData.bloodGroup);
+                const result = await findNearAvailableDonor(latitude, longitude, updatedUserData.bloodGroup);
+                const donors = result.donors;
                 
                 if (donors && donors.length > 0) {
-                    await sendMessageToFbUser(psId, `${donors.length} জন ${updatedUserData.bloodGroup} রক্তের গ্রুপের দাতা পাওয়া গেছে।`);
+                    let warningPrefix = '';
+                    if (result.isUnverifiedFallback) {
+                        warningPrefix = '⚠️ সতর্কতা: যাচাইকৃত রক্তদাতা পাওয়া যায়নি। নিচের রক্তদাতারা এখনো যাচাই করা হয়নি।\n\n';
+                    }
+                    await sendMessageToFbUser(psId, `${warningPrefix}${donors.length} জন ${updatedUserData.bloodGroup} রক্তের গ্রুপের দাতা পাওয়া গেছে।`);
                     
                     // Send each donor as a separate message (max 5 to avoid spam)
                     for (let i = 0; i < Math.min(donors.length, 5); i++) {

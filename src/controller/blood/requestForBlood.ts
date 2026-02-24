@@ -19,7 +19,8 @@ const requestForBlood = async (req: Request, res: Response) => {
         const latitude = parseFloat(data.latitude)
         const longitude = parseFloat(data.longitude)
 
-        const donors = await findNearAvailableDonor(latitude, longitude, data.bloodGroup)
+        const donorResult = await findNearAvailableDonor(latitude, longitude, data.bloodGroup)
+        const donors = donorResult.donors;
         const fbDonors = await findNearFbDonar(latitude, longitude, data.bloodGroup)
         
         const seekerLatitude = parseFloat(data.seekerLatitude)

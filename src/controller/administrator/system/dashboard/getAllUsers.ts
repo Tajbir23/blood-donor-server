@@ -2,43 +2,49 @@ import { Request, Response } from "express";
 import userModel from "../../../../models/user/userSchema";
 
 const getAllUsers = async (req: Request, res: Response) => {
-    const {search = '', page = 1, limit = 10, isActive, isBanned, allUser} = req.query;
+    const {search = '', page = 1, limit = 10, isActive, isBanned, isVerified, allUser} = req.query;
     const pageNumber = parseInt(page as any) || 1;
     const limitNumber = parseInt(limit as any) || 10;
 
     try {
-        const query: any = {
-            role: 'user',
-            // isActive: isActive === 'true' ? true : false,
-            // isBanned: isBanned === 'true' ? true : false
-        };
+        const conditions: any[] = [{ role: 'user' }];
         
-        if (isActive) {
-            query.isActive = isActive === 'true' ? true : false;
-        }
-        if (isBanned) {
-            query.isBanned = isBanned === 'true' ? true : false;
-        }
-        if (allUser === 'true') {
-            query.role = 'user';
-            delete query.isActive;
-            delete query.isBanned;
+        if (allUser !== 'true') {
+            if (isActive !== undefined && isActive !== '') {
+                conditions.push({ isActive: isActive === 'true' });
+            }
+            if (isBanned !== undefined && isBanned !== '') {
+                conditions.push({ isBanned: isBanned === 'true' });
+            }
+            if (isVerified !== undefined && isVerified !== '') {
+                if (isVerified === 'true') {
+                    conditions.push({ isVerified: true });
+                } else {
+                    // Match both explicitly false AND missing field (old users without this field)
+                    conditions.push({
+                        $or: [
+                            { isVerified: false },
+                            { isVerified: { $exists: false } },
+                            { isVerified: null }
+                        ]
+                    });
+                }
+            }
         }
         
-        console.log(req.query)
-        console.log(query)
         if (search) {
-            query.$or = [
+            const searchConditions: any[] = [
                 { fullName: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
                 { phone: { $regex: search, $options: 'i' } }
             ];
-            
-            // Only try to match ObjectId if the search string looks like one
             if (/^[0-9a-fA-F]{24}$/.test(search as string)) {
-                query.$or.push({ _id: search });
+                searchConditions.push({ _id: search });
             }
+            conditions.push({ $or: searchConditions });
         }
+        
+        const query = conditions.length === 1 ? conditions[0] : { $and: conditions };
         
         const users = await userModel.find(query)
             .select('-password -location -fingerPrint')
@@ -55,11 +61,10 @@ const getAllUsers = async (req: Request, res: Response) => {
             totalUsers
         })
     } catch (error) {
-        console.log(error)
         res.status(500).json({
             success: false,
             message: "Error fetching users",
-            error: error.message
+            error: (error as Error).message
         })
     }
 }

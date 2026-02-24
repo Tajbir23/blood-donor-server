@@ -23,6 +23,8 @@ const checkDonationDates = async (): Promise<void> => {
     // 2. Have never donated (lastDonationDate is null)
     const users = await userModel.find({
       isActive: true,
+      isVerified: true,
+      isBanned: { $ne: true },
       $or: [
         { lastDonationDate: null },
         { lastDonationDate: { $ne: null, $lt: fourMonthsAgoStr } }

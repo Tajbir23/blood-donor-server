@@ -3,11 +3,15 @@ import userModel from "../../models/user/userSchema";
 
 const highestDonor = async (req: Request, res: Response) => {
     try {
-        const donor = await userModel.find({})
-            .sort({donationCount: -1})  // Sort by donation count in descending order
-            .limit(10);  // Get top 10 donors with highest donation count
+        const donor = await userModel.find({
+                isActive: true,
+                isVerified: true,
+                isBanned: false,
+            })
+            .select('fullName thanaId districtId profileImageUrl totalDonationCount bloodGroup')
+            .sort({ totalDonationCount: -1 })
+            .limit(10);
 
-        
         res.status(200).json({
             success: true,
             message: "Highest Donor Leaderboard",

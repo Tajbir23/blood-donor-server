@@ -52,23 +52,56 @@ const createUser = async (req: Request, res: Response): Promise<void> => {
         const encryptedPassword = await encryptPass(data.password)
         data.password = encryptedPassword
 
+        // Extract client IP
+        const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || req.ip || null;
+        data.ipAddress = clientIp;
+
         const checkUniqueEmail = await userModel.findOne({email: data?.email})
         const checkUniquePhone = await userModel.findOne({phone: data?.phone})
         if(checkUniqueEmail){
-            console.log(checkUniqueEmail)
-            res.status(400).json({success: false, message: "Email already exists"})
+            res.status(400).json({success: false, message: "এই ইমেইল ইতিমধ্যে ব্যবহৃত হচ্ছে"})
             return;
         }
         if(checkUniquePhone){
-            res.status(400).json({success: false, message: "Phone number already exists"})
+            res.status(400).json({success: false, message: "এই ফোন নম্বর ইতিমধ্যে ব্যবহৃত হচ্ছে"})
             return;
         }
 
-        await sendOtp(data?.email)
+        // Block duplicate device: same fingerprint visitorId
+        if (data?.fingerprint?.visitorId) {
+            const checkFingerprint = await userModel.findOne({ 'fingerPrint.visitorId': data.fingerprint.visitorId })
+            if (checkFingerprint) {
+                res.status(400).json({ success: false, message: "এই ডিভাইস থেকে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে" })
+                return;
+            }
+        }
+
+        // Block duplicate device: same canvas fingerprint (strong hardware signal)
+        if (data?.fingerprint?.canvas) {
+            const checkCanvas = await userModel.findOne({ 'fingerPrint.canvas': data.fingerprint.canvas })
+            if (checkCanvas) {
+                res.status(400).json({ success: false, message: "এই ডিভাইস থেকে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে" })
+                return;
+            }
+        }
+
+        // Block duplicate IP
+        if (clientIp) {
+            const checkIp = await userModel.findOne({ ipAddress: clientIp })
+            if (checkIp) {
+                res.status(400).json({ success: false, message: "এই নেটওয়ার্ক থেকে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে" })
+                return;
+            }
+        }
+
+        const emailResult = await sendOtp(data?.email)
+        if (!emailResult?.success) {
+            res.status(500).json({ success: false, message: emailResult?.message ?? 'OTP ইমেইল পাঠাতে ব্যর্থ হয়েছে। আপনার ইমেইল ঠিকানা যাচাই করুন।' })
+            return;
+        }
         tempStoreUser.set(data?.email, data)
 
-        
-        res.status(200).json({success: true, message: "OTP sent to email", email: data.email})
+        res.status(200).json({success: true, message: "OTP আপনার ইমেইলে পাঠানো হয়েছে", email: data.email})
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: "User creation failed", error })

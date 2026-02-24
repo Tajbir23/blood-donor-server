@@ -10,10 +10,12 @@ import resendOtp from "../controller/user/resendOtp";
 import forgotPassword from "../controller/user/forgotPassword";
 import me from "../controller/user/me";
 import updateLastDonation from "../controller/user/updateLastDonation";
+import getDonationHistory from "../controller/user/getDonationHistory";
 import searchBlood from "../controller/blood/searchBlood";
 import searchDonar from "../controller/user/searchDonar";
 import updateProfileImage from "../controller/user/updateProfileImage";
 import refreshToken from "../controller/user/refreshToken";
+import reportUser from "../controller/user/reportUser";
 
 
 const userRouter = Router();
@@ -27,8 +29,10 @@ userRouter.post('/resend-otp', loginLimiter, resendOtp)
 userRouter.post('/forgot-password', forgotPassword)
 userRouter.get('/me', verifyJwt, me)
 userRouter.post('/update-last-donation', verifyJwt, updateLastDonation)
+userRouter.get('/donation-history', verifyJwt, getDonationHistory)
 userRouter.post("/donor/search", searchBlood)
 userRouter.get("/search-users", searchDonar)
 userRouter.put('/update-profile-image', verifyJwt, profileImageUpload, updateProfileImage)
 userRouter.get('/refresh-token', refreshToken)
+userRouter.post('/report', verifyJwt, reportUser)
 export default userRouter;

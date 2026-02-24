@@ -20,6 +20,7 @@ interface UserType {
     canDonate: boolean;
     nextDonationDate: string;
     isBanned: boolean;
+    ipAddress: string | null;
     badges: string[];
     districtId: string;
     thanaId: string;

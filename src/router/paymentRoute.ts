@@ -13,7 +13,6 @@ export const store_id = process.env.SSLCOMMERZ_STORE_ID;
 export const store_passwd = process.env.SSLCOMMERZ_STORE_PASSWORD;
 export const is_live = process.env.IS_LIVE === "true";
 
-export const paymentHistory = new Map<string, any>();
 
 paymentRouter.post('/donation', donation)
 paymentRouter.post('/ipn', ipn)

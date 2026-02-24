@@ -11,7 +11,6 @@ export default async function updateLastDonationDateFb(
   receivedText: string,
   receivedPostback: string
 ) {
-  console.log(`updateLastDonationDateFb called with type: ${type}, receivedText: ${receivedText}`);
   const isUserExists = await FbUserModel.findOne({ psId: psId });
   if (!isUserExists) {
     await sendMessageToFbUser(psId, "আপনি আমাদের বেবহারকারি নন। আপনার প্রথম রক্তদানের তারিখ সংরক্ষণ করতে পারবেন না। আপনাকে প্রথমে নিবন্ধন করতে হবে।");
@@ -20,11 +19,9 @@ export default async function updateLastDonationDateFb(
   }
   try {
     let lastDonationData = updateLastDonationMapFb.get(psId) || {};
-    console.log("Current lastDonationData:", lastDonationData);
 
     if (type === "first_call") {
       updateLastDonationMapFb.set(psId, { flowType: "update_year" });
-      console.log("Setting flow to update_year");
       
       const currentYear = new Date().getFullYear();
       const years = [];
@@ -41,7 +38,6 @@ export default async function updateLastDonationDateFb(
       lastDonationData.year = receivedText;
       lastDonationData.flowType = "update_month";
       updateLastDonationMapFb.set(psId, lastDonationData);
-      console.log(`Year ${receivedText} selected, setting flow to update_month`);
       
       const months = [
         "January", "February", "March", "April", "May", "June",
@@ -57,7 +53,6 @@ export default async function updateLastDonationDateFb(
       lastDonationData.month = receivedText;
       lastDonationData.flowType = "day_group1";
       updateLastDonationMapFb.set(psId, lastDonationData);
-      console.log(`Month ${receivedText} selected, setting flow to day_group1`);
       
       // Days 1-8 plus More button
       const daysGroup1 = ["1", "2", "3", "4", "5", "6", "7", "8", "More days..."];
@@ -70,7 +65,6 @@ export default async function updateLastDonationDateFb(
         // User wants to see more days
         lastDonationData.flowType = "day_group2";
         updateLastDonationMapFb.set(psId, lastDonationData);
-        console.log("User clicked More days, switching to day_group2");
         
         // Days 9-16 plus More button
         const daysGroup2 = ["9", "10", "11", "12", "13", "14", "15", "16", "More days..."];
@@ -80,14 +74,9 @@ export default async function updateLastDonationDateFb(
         // Day is selected from group 1
         lastDonationData.day = receivedText;
         updateLastDonationMapFb.delete(psId); // Clear data after saving
-        console.log(`Day ${receivedText} selected, saving full date`);
         
-        // Build the date string
-        const dateString = `${lastDonationData.year}-${getMonthNumber(lastDonationData.month)}-${receivedText.padStart(2, '0')}`;
-        console.log(`Formatted date: ${dateString}`);
-        
-        // TODO: Save the date to the user's profile in the database
-        await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, lastDonationData.day);
+        // Save the date to the user's profile in the database
+        await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, receivedText);
         await sendMessageToFbUser(psId, 
           `আপনার শেষ রক্তদানের তারিখ ${receivedText} ${lastDonationData.month}, ${lastDonationData.year} হিসাবে সংরক্ষণ করা হয়েছে। ধন্যবাদ!`
         );
@@ -100,7 +89,6 @@ export default async function updateLastDonationDateFb(
         // User wants to see more days
         lastDonationData.flowType = "day_group3";
         updateLastDonationMapFb.set(psId, lastDonationData);
-        console.log("User clicked More days, switching to day_group3");
         
         // Days 17-24 plus More button
         const daysGroup3 = ["17", "18", "19", "20", "21", "22", "23", "24", "More days..."];
@@ -110,15 +98,9 @@ export default async function updateLastDonationDateFb(
         // Day is selected from group 2
         lastDonationData.day = receivedText;
         updateLastDonationMapFb.delete(psId); // Clear data after saving
-        console.log(`Day ${receivedText} selected, saving full date`);
         
-        // Build the date string
-        const dateString = `${lastDonationData.year}-${getMonthNumber(lastDonationData.month)}-${receivedText.padStart(2, '0')}`;
-        console.log(`Formatted date: ${dateString}`);
-        
-        // TODO: Save the date to the user's profile in the database
-
-        await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, lastDonationData.day);
+        // Save the date to the user's profile in the database
+        await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, receivedText);
         
         await sendMessageToFbUser(psId, 
           `আপনার শেষ রক্তদানের তারিখ ${receivedText} ${lastDonationData.month}, ${lastDonationData.year} হিসাবে সংরক্ষণ করা হয়েছে। ধন্যবাদ!`
@@ -132,7 +114,6 @@ export default async function updateLastDonationDateFb(
         // User wants to see more days
         lastDonationData.flowType = "day_group4";
         updateLastDonationMapFb.set(psId, lastDonationData);
-        console.log("User clicked More days, switching to day_group4");
         
         // Days 25-31
         const daysGroup4 = ["25", "26", "27", "28", "29", "30", "31"];
@@ -142,14 +123,9 @@ export default async function updateLastDonationDateFb(
         // Day is selected from group 3
         lastDonationData.day = receivedText;
         updateLastDonationMapFb.delete(psId); // Clear data after saving
-        console.log(`Day ${receivedText} selected, saving full date`);
         
-        // Build the date string
-        const dateString = `${lastDonationData.year}-${getMonthNumber(lastDonationData.month)}-${receivedText.padStart(2, '0')}`;
-        console.log(`Formatted date: ${dateString}`);
-        
-        // TODO: Save the date to the user's profile in the database
-        await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, lastDonationData.day);
+        // Save the date to the user's profile in the database
+        await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, receivedText);
         
         await sendMessageToFbUser(psId, 
           `আপনার শেষ রক্তদানের তারিখ ${receivedText} ${lastDonationData.month}, ${lastDonationData.year} হিসাবে সংরক্ষণ করা হয়েছে। ধন্যবাদ!`
@@ -162,14 +138,9 @@ export default async function updateLastDonationDateFb(
       // Day is selected from group 4
       lastDonationData.day = receivedText;
       updateLastDonationMapFb.delete(psId); // Clear data after saving
-      console.log(`Day ${receivedText} selected, saving full date`);
       
-      // Build the date string
-      const dateString = `${lastDonationData.year}-${getMonthNumber(lastDonationData.month)}-${receivedText.padStart(2, '0')}`;
-      console.log(`Formatted date: ${dateString}`);
-      
-      // TODO: Save the date to the user's profile in the database
-      await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, lastDonationData.day);
+      // Save the date to the user's profile in the database
+      await saveLastDonationDate(psId, lastDonationData.year, lastDonationData.month, receivedText);
       
       await sendMessageToFbUser(psId, 
         `আপনার শেষ রক্তদানের তারিখ ${receivedText} ${lastDonationData.month}, ${lastDonationData.year} হিসাবে সংরক্ষণ করা হয়েছে। ধন্যবাদ!`

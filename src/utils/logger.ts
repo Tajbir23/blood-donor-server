@@ -28,4 +28,8 @@ export const createLogger = (context: string): Logger => {
       console.debug(`[${new Date().toISOString()}] [DEBUG] [${context}] ${message}`, ...meta);
     }
   };
-}; 
+};
+
+// Default logger instance
+const logger = createLogger('App');
+export default logger;

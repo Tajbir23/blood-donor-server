@@ -5,7 +5,6 @@ const searchBlood = async (req: Request, res: Response) => {
     try {
         const {bloodGroup, latitude, longitude} = req.body
 
-        console.log(req.body)
     if(!bloodGroup || !latitude || !longitude) {
         res.status(400).json({
             success: false,
@@ -18,11 +17,12 @@ const searchBlood = async (req: Request, res: Response) => {
     const parsedLongitude = parseFloat(longitude as string);
     const bloodGroupStr = bloodGroup as string;
     
-    const donors = await findNearAvailableDonor(parsedLatitude, parsedLongitude, bloodGroupStr)
+    const result = await findNearAvailableDonor(parsedLatitude, parsedLongitude, bloodGroupStr)
 
     res.status(200).json({
         success: true,
-            donors
+        donors: result.donors,
+        isUnverifiedFallback: result.isUnverifiedFallback
         })
     } catch (error) {
         console.log(error);

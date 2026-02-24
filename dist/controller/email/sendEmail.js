@@ -31,8 +31,10 @@ const getDefaultSubject = (type) => {
 // Function to generate dynamic HTML content based on template type
 const sendEmail = async (data) => {
     const { email, subject, templateType, templateData } = data;
+    console.log('Sending email to', email);
     // Use provided subject or get default based on template type
     const emailSubject = subject || getDefaultSubject(templateType);
+    console.log(emailSubject);
     // Create a transporter object using the default SMTP transport
     const transporter = nodemailer_1.default.createTransport({
         service: 'gmail',
@@ -55,10 +57,12 @@ const sendEmail = async (data) => {
     };
     try {
         // Send mail with defined transport object
-        await transporter.sendMail(mailOptions);
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Message sent: %s', info.messageId);
         return { success: true, message: 'ইমেইল সফলভাবে পাঠানো হয়েছে' };
     }
     catch (error) {
+        console.log(error);
         return { success: false, message: `ইমেইল পাঠাতে ব্যর্থ হয়েছে: ${error}` };
     }
 };
