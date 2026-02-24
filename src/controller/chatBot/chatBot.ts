@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import handleFbBotMessage from "../../handler/facebookBotHandler/handleFbBotMessage";
+import FacebookMessage from "../../models/facebook/facebookMessageSchema";
 
 const chatBot = async (req: Request, res: Response) => {
     try {
@@ -49,6 +50,16 @@ const chatBot = async (req: Request, res: Response) => {
 
                 const received_text = webhookEvent.message?.text;
                 const received_postback = webhookEvent.postback?.payload;
+
+                // Save incoming message to database
+                await FacebookMessage.create({
+                    psId,
+                    messageText: received_text || null,
+                    postback: received_postback || null,
+                    quickReplyPayload: webhookEvent.message?.quick_reply?.payload || null,
+                    direction: "incoming",
+                    rawPayload: webhookEvent,
+                });
 
                 if (received_text || received_postback) {
                     await handleFbBotMessage(received_text, received_postback, psId, quickReplyType);
