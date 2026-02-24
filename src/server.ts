@@ -17,6 +17,7 @@ import FacebookBotRouter from './router/facebook_bot/facebook_bot_Router'
 import setupGetStartedButton from './handler/facebookBotHandler/setUpGetStartedButton'
 import setupPersistentMenu from './handler/facebookBotHandler/setUpPersistantMenu'
 import { verifyEmailConfig } from './controller/email/sendEmail'
+import { trainIntentModel } from './handler/facebookBotHandler/ai/intentClassifier'
 const PORT = process.env.PORT || 4000
 
 export const app = express()
@@ -140,4 +141,10 @@ app.listen(PORT, async() => {
     console.log('Donation reminder cron job scheduled');
     await setupGetStartedButton();
     await setupPersistentMenu();
+
+    // Train the Facebook Bot AI intent classifier in the background
+    // (runs fully locally with TensorFlow.js – no API key needed)
+    trainIntentModel()
+        .then(() => console.log('[AI] Bot intent model ready ✓'))
+        .catch(err => console.error('[AI] Model training failed:', err));
 })

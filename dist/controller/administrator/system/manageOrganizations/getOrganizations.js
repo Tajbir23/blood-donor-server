@@ -13,7 +13,6 @@ const getOrganizations = async (req, res) => {
     }
     const { search, status, page = 1, limit = 10 } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
-    console.log(status);
     try {
         // Build query
         let query = {};

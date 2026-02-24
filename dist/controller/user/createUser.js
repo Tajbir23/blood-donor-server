@@ -45,6 +45,7 @@ const resRegUser = async (email, res) => {
 };
 exports.resRegUser = resRegUser;
 const createUser = async (req, res) => {
+    var _a, _b, _c, _d, _e, _f;
     const data = JSON.parse(req.body.userData);
     const imageUrl = res.locals.imageUrl;
     data.profileImageUrl = imageUrl;
@@ -52,20 +53,50 @@ const createUser = async (req, res) => {
     try {
         const encryptedPassword = await (0, encryptPass_1.default)(data.password);
         data.password = encryptedPassword;
+        // Extract client IP
+        const clientIp = ((_b = (_a = req.headers['x-forwarded-for']) === null || _a === void 0 ? void 0 : _a.split(',')[0]) === null || _b === void 0 ? void 0 : _b.trim()) || ((_c = req.socket) === null || _c === void 0 ? void 0 : _c.remoteAddress) || req.ip || null;
+        data.ipAddress = clientIp;
         const checkUniqueEmail = await userSchema_1.default.findOne({ email: data === null || data === void 0 ? void 0 : data.email });
         const checkUniquePhone = await userSchema_1.default.findOne({ phone: data === null || data === void 0 ? void 0 : data.phone });
         if (checkUniqueEmail) {
-            console.log(checkUniqueEmail);
-            res.status(400).json({ success: false, message: "Email already exists" });
+            res.status(400).json({ success: false, message: "এই ইমেইল ইতিমধ্যে ব্যবহৃত হচ্ছে" });
             return;
         }
         if (checkUniquePhone) {
-            res.status(400).json({ success: false, message: "Phone number already exists" });
+            res.status(400).json({ success: false, message: "এই ফোন নম্বর ইতিমধ্যে ব্যবহৃত হচ্ছে" });
             return;
         }
-        await (0, sendOtp_1.default)(data === null || data === void 0 ? void 0 : data.email);
+        // Block duplicate device: same fingerprint visitorId
+        if ((_d = data === null || data === void 0 ? void 0 : data.fingerprint) === null || _d === void 0 ? void 0 : _d.visitorId) {
+            const checkFingerprint = await userSchema_1.default.findOne({ 'fingerPrint.visitorId': data.fingerprint.visitorId });
+            if (checkFingerprint) {
+                res.status(400).json({ success: false, message: "এই ডিভাইস থেকে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে" });
+                return;
+            }
+        }
+        // Block duplicate device: same canvas fingerprint (strong hardware signal)
+        if ((_e = data === null || data === void 0 ? void 0 : data.fingerprint) === null || _e === void 0 ? void 0 : _e.canvas) {
+            const checkCanvas = await userSchema_1.default.findOne({ 'fingerPrint.canvas': data.fingerprint.canvas });
+            if (checkCanvas) {
+                res.status(400).json({ success: false, message: "এই ডিভাইস থেকে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে" });
+                return;
+            }
+        }
+        // Block duplicate IP
+        if (clientIp) {
+            const checkIp = await userSchema_1.default.findOne({ ipAddress: clientIp });
+            if (checkIp) {
+                res.status(400).json({ success: false, message: "এই নেটওয়ার্ক থেকে ইতিমধ্যে একটি অ্যাকাউন্ট খোলা হয়েছে" });
+                return;
+            }
+        }
+        const emailResult = await (0, sendOtp_1.default)(data === null || data === void 0 ? void 0 : data.email);
+        if (!(emailResult === null || emailResult === void 0 ? void 0 : emailResult.success)) {
+            res.status(500).json({ success: false, message: (_f = emailResult === null || emailResult === void 0 ? void 0 : emailResult.message) !== null && _f !== void 0 ? _f : 'OTP ইমেইল পাঠাতে ব্যর্থ হয়েছে। আপনার ইমেইল ঠিকানা যাচাই করুন।' });
+            return;
+        }
         exports.tempStoreUser.set(data === null || data === void 0 ? void 0 : data.email, data);
-        res.status(200).json({ success: true, message: "OTP sent to email", email: data.email });
+        res.status(200).json({ success: true, message: "OTP আপনার ইমেইলে পাঠানো হয়েছে", email: data.email });
     }
     catch (error) {
         console.log(error);

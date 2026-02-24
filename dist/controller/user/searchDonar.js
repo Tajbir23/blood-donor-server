@@ -13,8 +13,10 @@ const searchDonar = async (req, res) => {
             { email: { $regex: search, $options: "i" } },
             { _id: search.toString().match(/^[0-9a-fA-F]{24}$/) ? search : null }
         ],
-        isBanned: false,
-    }).select("-password -fingerprint").limit(5);
+        isBanned: { $ne: true },
+        isActive: true,
+        isVerified: true,
+    }).select("-password -fingerPrint -location -token").limit(5);
     res.status(200).json({ success: true, donors });
 };
 exports.default = searchDonar;

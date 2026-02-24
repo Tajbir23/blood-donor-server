@@ -12,12 +12,14 @@ const donorLeaderBoard_1 = __importDefault(require("./donorLeaderBoard"));
 const route_1 = __importDefault(require("./administrator/system/route"));
 const orgAdminRoute_1 = __importDefault(require("./administrator/organizations/orgAdminRoute"));
 const homeRouter_1 = __importDefault(require("./home/homeRouter"));
+const blogRoute_1 = __importDefault(require("./blogRoute"));
 const router = (0, express_1.Router)();
 router.use('/user', userRouter_1.default);
 router.use('/organization', organizationRoute_1.default);
 router.use('/blood_request', bloodRequestRoute_1.default);
 router.use('/payment', paymentRoute_1.default);
 router.use('/donor-leaderboard', donorLeaderBoard_1.default);
+router.use('/blog', blogRoute_1.default);
 router.use('/home', homeRouter_1.default);
 // system administrator routes
 router.use('/system', route_1.default);

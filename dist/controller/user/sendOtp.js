@@ -14,7 +14,6 @@ const generateOTP = async (email) => {
 };
 exports.generateOTP = generateOTP;
 const sendOtp = async (email) => {
-    console.log('send otp', email);
     const otp = await (0, exports.generateOTP)(email);
     const data = await (0, sendEmail_1.default)({ email, subject: "Verify Email", templateType: "verifyEmail", templateData: { otp: otp } });
     return data;

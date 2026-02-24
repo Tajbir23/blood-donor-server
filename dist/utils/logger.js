@@ -23,3 +23,6 @@ const createLogger = (context) => {
     };
 };
 exports.createLogger = createLogger;
+// Default logger instance
+const logger = (0, exports.createLogger)('App');
+exports.default = logger;

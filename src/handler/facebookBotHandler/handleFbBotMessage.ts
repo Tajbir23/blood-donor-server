@@ -7,6 +7,7 @@ import sendMessageToFbUser, { sendUrlButtonToFbUser, sendGenericTemplate } from 
 import { userAdressMap } from "./address";
 import updateLastDonationDateFb from "./updateLastDonationDateFb";
 import updateLastDonationMapFb from "./updateLastDonationMapFb";
+import { handleAiMessage, clearAiState } from "./ai/aiConversationHandler";
 
 // Define a basic interface for what we know the user data could contain
 interface UserData {
@@ -125,6 +126,7 @@ const handleFbBotMessage = async (received_text: string, received_postback: stri
         // Check for explicit Find Blood or FIND_BLOOD first
         if (received_text === "Find Blood" || received_postback === "FIND_BLOOD") {
             console.log("Detected explicit Find Blood request");
+            clearAiState(psId);
             await findBloodFromFb(psId, "", received_text, "findBlood", received_postback);
             return;
         }
@@ -189,11 +191,23 @@ const handleFbBotMessage = async (received_text: string, received_postback: stri
             }
         }
 
+        // ── AI natural-language fallback ──────────────────────────────────
+        // Try to handle the message with the TensorFlow.js intent classifier
+        // (supports Bengali + English free-form text)
+        if (received_text && received_text.trim().length > 0) {
+            console.log("[AI] Attempting AI handler for:", received_text);
+            const aiHandled = await handleAiMessage(psId, received_text);
+            if (aiHandled) {
+                console.log("[AI] Message handled by AI.");
+                return;
+            }
+        }
+
         // Default to the main menu if we can't determine the flow
         console.log("No matching condition found, showing default menu");
         await quickReply(
             psId, 
-            "আমি আপনাকে বুঝতে পারিনি। আবার চেষ্টা করুন।", 
+            "আমি আপনাকে বুঝতে পারিনি। বাংলা বা ইংরেজিতে লিখুন অথবা নিচের মেনু ব্যবহার করুন:", 
             ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]
         );
         return;

@@ -111,6 +111,10 @@ const userSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false
     },
+    ipAddress: {
+        type: String,
+        default: null
+    },
     latitude: {
         type: Number
     },

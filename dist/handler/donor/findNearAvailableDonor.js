@@ -8,9 +8,21 @@ const findNearAvailableDonor = async (latitude, longitude, bloodGroup) => {
     // Calculate date 4 months ago
     const fourMonthsAgo = new Date();
     fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+    const donationEligibility = {
+        $or: [
+            { lastDonationDate: { $lte: fourMonthsAgo } },
+            { lastDonationDate: null },
+            { lastDonationDate: { $exists: false } }
+        ]
+    };
+    const baseFilters = [
+        donationEligibility,
+        { isBanned: { $ne: true } },
+        { isActive: true }
+    ];
     try {
-        // First check if we can find donors with geo query
-        const donors = await userSchema_1.default.find({
+        // First try: verified donors with geo query
+        let donors = await userSchema_1.default.find({
             location: {
                 $near: {
                     $geometry: {
@@ -21,29 +33,31 @@ const findNearAvailableDonor = async (latitude, longitude, bloodGroup) => {
                 }
             },
             bloodGroup: bloodGroup,
-            $and: [
-                {
-                    $or: [
-                        { lastDonationDate: { $lte: fourMonthsAgo } },
-                        { lastDonationDate: null },
-                        { lastDonationDate: { $exists: false } }
-                    ]
+            $and: [...baseFilters, { isVerified: true }]
+        }).select('-password -fingerPrint -token').lean();
+        let isUnverifiedFallback = false;
+        // If no verified donors found, fallback to unverified donors
+        if (donors.length === 0) {
+            donors = await userSchema_1.default.find({
+                location: {
+                    $near: {
+                        $geometry: {
+                            type: "Point",
+                            coordinates: [longitude, latitude]
+                        },
+                        $maxDistance: 15000
+                    }
                 },
-                {
-                    $or: [
-                        { isBanned: false },
-                        { isBanned: { $exists: false } }
-                    ]
-                },
-                { isActive: true },
-                {
-                    $or: [
-                        { isVerified: true },
-                        { isVerified: { $exists: false } }
-                    ]
-                }
-            ]
-        }).lean();
+                bloodGroup: bloodGroup,
+                $and: [
+                    ...baseFilters,
+                    { $or: [{ isVerified: false }, { isVerified: { $exists: false } }, { isVerified: null }] }
+                ]
+            }).select('-password -fingerPrint -token').lean();
+            if (donors.length > 0) {
+                isUnverifiedFallback = true;
+            }
+        }
         // Calculate distance for each donor
         const donorsWithDistance = donors.map(donor => {
             // If location exists, calculate distance
@@ -79,37 +93,29 @@ const findNearAvailableDonor = async (latitude, longitude, bloodGroup) => {
                 return -1;
             return a.distance - b.distance;
         });
-        return donorsWithDistance;
+        return { donors: donorsWithDistance, isUnverifiedFallback };
     }
     catch (error) {
         console.error("Error in findNearAvailableDonor:", error);
         // Fall back to search without geospatial query if there's an error
-        const donors = await userSchema_1.default.find({
+        let donors = await userSchema_1.default.find({
             bloodGroup: bloodGroup,
-            $and: [
-                {
-                    $or: [
-                        { lastDonationDate: { $lte: fourMonthsAgo } },
-                        { lastDonationDate: null },
-                        { lastDonationDate: { $exists: false } }
-                    ]
-                },
-                {
-                    $or: [
-                        { isBanned: false },
-                        { isBanned: { $exists: false } }
-                    ]
-                },
-                { isActive: true },
-                {
-                    $or: [
-                        { isVerified: true },
-                        { isVerified: { $exists: false } }
-                    ]
-                }
-            ]
-        }).lean();
-        return donors;
+            $and: [...baseFilters, { isVerified: true }]
+        }).select('-password -fingerPrint -token').lean();
+        let isUnverifiedFallback = false;
+        if (donors.length === 0) {
+            donors = await userSchema_1.default.find({
+                bloodGroup: bloodGroup,
+                $and: [
+                    ...baseFilters,
+                    { $or: [{ isVerified: false }, { isVerified: { $exists: false } }, { isVerified: null }] }
+                ]
+            }).select('-password -fingerPrint -token').lean();
+            if (donors.length > 0) {
+                isUnverifiedFallback = true;
+            }
+        }
+        return { donors, isUnverifiedFallback };
     }
 };
 exports.default = findNearAvailableDonor;

@@ -12,6 +12,7 @@ const sendMessageToFbUser_1 = require("./sendMessageToFbUser");
 const address_1 = require("./address");
 const updateLastDonationDateFb_1 = __importDefault(require("./updateLastDonationDateFb"));
 const updateLastDonationMapFb_1 = __importDefault(require("./updateLastDonationMapFb"));
+const aiConversationHandler_1 = require("./ai/aiConversationHandler");
 const handleFbBotMessage = async (received_text, received_postback, psId, quickReplyType) => {
     try {
         console.log("Handling message:", received_text, received_postback, "type:", quickReplyType, "for PSID:", psId);
@@ -86,6 +87,7 @@ const handleFbBotMessage = async (received_text, received_postback, psId, quickR
         // Check for explicit Find Blood or FIND_BLOOD first
         if (received_text === "Find Blood" || received_postback === "FIND_BLOOD") {
             console.log("Detected explicit Find Blood request");
+            (0, aiConversationHandler_1.clearAiState)(psId);
             await (0, findBloodFromFb_1.default)(psId, "", received_text, "findBlood", received_postback);
             return;
         }
@@ -145,9 +147,20 @@ const handleFbBotMessage = async (received_text, received_postback, psId, quickR
                 return;
             }
         }
+        // ── AI natural-language fallback ──────────────────────────────────
+        // Try to handle the message with the TensorFlow.js intent classifier
+        // (supports Bengali + English free-form text)
+        if (received_text && received_text.trim().length > 0) {
+            console.log("[AI] Attempting AI handler for:", received_text);
+            const aiHandled = await (0, aiConversationHandler_1.handleAiMessage)(psId, received_text);
+            if (aiHandled) {
+                console.log("[AI] Message handled by AI.");
+                return;
+            }
+        }
         // Default to the main menu if we can't determine the flow
         console.log("No matching condition found, showing default menu");
-        await (0, quickReply_1.default)(psId, "আমি আপনাকে বুঝতে পারিনি। আবার চেষ্টা করুন।", ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]);
+        await (0, quickReply_1.default)(psId, "আমি আপনাকে বুঝতে পারিনি। বাংলা বা ইংরেজিতে লিখুন অথবা নিচের মেনু ব্যবহার করুন:", ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]);
         return;
     }
     catch (error) {

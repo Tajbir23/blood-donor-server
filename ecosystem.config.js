@@ -1,18 +1,21 @@
 module.exports = {
     apps: [
       {
-        name: "server", // আপনার অ্যাপের নাম
-        script: "dist/server.js", // compiled js ফাইল
-        instances: "max", // যত CPU core, ততগুলো instance চালাবে
-        exec_mode: "cluster", // multi-core mode
+        name: "server",
+        script: "dist/server.js",
+        instances: 1,          // 500MB সার্ভারে একটাই instance – cluster off
+        exec_mode: "fork",
+        node_args: "--max-old-space-size=420 --gc-interval=100",
         env: {
           NODE_ENV: "development",
         },
         env_production: {
           NODE_ENV: "production",
         },
-        watch: false, // production-এ watch রাখা ঠিক না
-        max_memory_restart: "300M", // মেমোরি usage বেশি হলে restart করবে
+        watch: false,
+        max_memory_restart: "460M", // TF.js training spike সামলাতে একটু বেশি
+        kill_timeout: 5000,
+        restart_delay: 3000,
       },
     ],
   };

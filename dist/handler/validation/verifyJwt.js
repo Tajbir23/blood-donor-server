@@ -8,9 +8,7 @@ const verifyJwt = (req, res, next) => {
     var _a;
     try {
         const token = (_a = req.headers.authorization) === null || _a === void 0 ? void 0 : _a.split(' ')[1];
-        console.log("verifyJwt.ts token", token);
         if (!token) {
-            console.log("verifyJwt.ts", 401);
             res.status(401).json({ success: false, message: 'অনুমতি নেই' });
             return;
         }
@@ -19,8 +17,6 @@ const verifyJwt = (req, res, next) => {
         next();
     }
     catch (error) {
-        console.log(error);
-        console.log("verifyJwt.ts error", 401);
         res.status(401).json({ success: false, message: 'অবৈধ টোকেন' });
     }
 };

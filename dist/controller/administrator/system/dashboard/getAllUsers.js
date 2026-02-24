@@ -5,39 +5,46 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const userSchema_1 = __importDefault(require("../../../../models/user/userSchema"));
 const getAllUsers = async (req, res) => {
-    const { search = '', page = 1, limit = 10, isActive, isBanned, allUser } = req.query;
+    const { search = '', page = 1, limit = 10, isActive, isBanned, isVerified, allUser } = req.query;
     const pageNumber = parseInt(page) || 1;
     const limitNumber = parseInt(limit) || 10;
     try {
-        const query = {
-            role: 'user',
-            // isActive: isActive === 'true' ? true : false,
-            // isBanned: isBanned === 'true' ? true : false
-        };
-        if (isActive) {
-            query.isActive = isActive === 'true' ? true : false;
+        const conditions = [{ role: 'user' }];
+        if (allUser !== 'true') {
+            if (isActive !== undefined && isActive !== '') {
+                conditions.push({ isActive: isActive === 'true' });
+            }
+            if (isBanned !== undefined && isBanned !== '') {
+                conditions.push({ isBanned: isBanned === 'true' });
+            }
+            if (isVerified !== undefined && isVerified !== '') {
+                if (isVerified === 'true') {
+                    conditions.push({ isVerified: true });
+                }
+                else {
+                    // Match both explicitly false AND missing field (old users without this field)
+                    conditions.push({
+                        $or: [
+                            { isVerified: false },
+                            { isVerified: { $exists: false } },
+                            { isVerified: null }
+                        ]
+                    });
+                }
+            }
         }
-        if (isBanned) {
-            query.isBanned = isBanned === 'true' ? true : false;
-        }
-        if (allUser === 'true') {
-            query.role = 'user';
-            delete query.isActive;
-            delete query.isBanned;
-        }
-        console.log(req.query);
-        console.log(query);
         if (search) {
-            query.$or = [
+            const searchConditions = [
                 { fullName: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
                 { phone: { $regex: search, $options: 'i' } }
             ];
-            // Only try to match ObjectId if the search string looks like one
             if (/^[0-9a-fA-F]{24}$/.test(search)) {
-                query.$or.push({ _id: search });
+                searchConditions.push({ _id: search });
             }
+            conditions.push({ $or: searchConditions });
         }
+        const query = conditions.length === 1 ? conditions[0] : { $and: conditions };
         const users = await userSchema_1.default.find(query)
             .select('-password -location -fingerPrint')
             .skip((pageNumber - 1) * limitNumber)
@@ -51,7 +58,6 @@ const getAllUsers = async (req, res) => {
         });
     }
     catch (error) {
-        console.log(error);
         res.status(500).json({
             success: false,
             message: "Error fetching users",

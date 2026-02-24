@@ -53,6 +53,8 @@ const path_1 = __importDefault(require("path"));
 const facebook_bot_Router_1 = __importDefault(require("./router/facebook_bot/facebook_bot_Router"));
 const setUpGetStartedButton_1 = __importDefault(require("./handler/facebookBotHandler/setUpGetStartedButton"));
 const setUpPersistantMenu_1 = __importDefault(require("./handler/facebookBotHandler/setUpPersistantMenu"));
+const sendEmail_1 = require("./controller/email/sendEmail");
+const intentClassifier_1 = require("./handler/facebookBotHandler/ai/intentClassifier");
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
 // Trust proxy - required for Railway deployment behind proxy
@@ -146,13 +148,18 @@ exports.app.use('/webhook', facebook_bot_Router_1.default);
 exports.activeUsers = [];
 exports.app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    // Verify email (SMTP) credentials on startup
+    await (0, sendEmail_1.verifyEmailConfig)();
     // Initialize cron jobs
     (0, organizationCheck_1.default)();
     console.log('Organization check cron job scheduled');
     (0, donationReminder_1.default)();
     console.log('Donation reminder cron job scheduled');
     await (0, setUpGetStartedButton_1.default)();
-    console.log('Get Started button set successfully');
     await (0, setUpPersistantMenu_1.default)();
-    console.log('Persistent menu set successfully');
+    // Train the Facebook Bot AI intent classifier in the background
+    // (runs fully locally with TensorFlow.js – no API key needed)
+    (0, intentClassifier_1.trainIntentModel)()
+        .then(() => console.log('[AI] Bot intent model ready ✓'))
+        .catch(err => console.error('[AI] Model training failed:', err));
 });

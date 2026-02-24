@@ -13,6 +13,8 @@ const UpdateUserLastDonation_1 = __importDefault(require("../../../controller/ad
 const manageRole_1 = __importDefault(require("../../../controller/administrator/organizations/manageOrganizations/manageRole"));
 const removeUser_1 = __importDefault(require("../../../controller/administrator/organizations/manageOrganizations/removeUser"));
 const updateOrgCover_1 = __importDefault(require("../../../controller/administrator/organizations/manageOrganizations/updateOrgCover"));
+const getOrgReports_1 = __importDefault(require("../../../controller/administrator/organizations/manageOrganizations/getOrgReports"));
+const updateReportStatus_1 = __importDefault(require("../../../controller/administrator/organizations/manageOrganizations/updateReportStatus"));
 const imageUpload_1 = require("../../../handler/fileUpload/imageUpload");
 const orgAdminRouter = (0, express_1.Router)();
 orgAdminRouter.get('/pending_members/:organizationId', verifyJwt_1.default, verifyOrganizationAdmin_1.default, getPendingMembers_1.default);
@@ -22,4 +24,6 @@ orgAdminRouter.put('/update_last_donation/:organizationId', verifyJwt_1.default,
 orgAdminRouter.post('/manage_role/:organizationId', verifyJwt_1.default, verifyOrganizationAdmin_1.default, manageRole_1.default);
 orgAdminRouter.post('/remove_member/:organizationId', verifyJwt_1.default, verifyOrganizationAdmin_1.default, removeUser_1.default);
 orgAdminRouter.put('/update_org_cover/:organizationId', verifyJwt_1.default, verifyOrganizationAdmin_1.default, imageUpload_1.organizationLogoUpload, updateOrgCover_1.default);
+orgAdminRouter.get('/reports/:organizationId', verifyJwt_1.default, verifyOrganizationAdmin_1.default, getOrgReports_1.default);
+orgAdminRouter.put('/report_status/:reportId', verifyJwt_1.default, updateReportStatus_1.default);
 exports.default = orgAdminRouter;

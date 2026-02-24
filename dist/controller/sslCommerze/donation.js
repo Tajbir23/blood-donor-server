@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const paymentRoute_1 = require("../../router/paymentRoute");
 // @ts-ignore
 const sslcommerz_lts_1 = __importDefault(require("sslcommerz-lts"));
+const moneyDonationSchema_1 = __importDefault(require("../../models/donation/moneyDonationSchema"));
+const logger_1 = __importDefault(require("../../utils/logger"));
 const donation = async (req, res) => {
     const { amount, donor_name, donor_email, donor_phone } = req.body;
     const tran_id = `REF-${Date.now()}`;
@@ -30,22 +32,25 @@ const donation = async (req, res) => {
     try {
         const apiResponse = await sslc.init(data);
         if (apiResponse.GatewayPageURL) {
-            res.status(200).json({ url: apiResponse.GatewayPageURL });
-            // res.redirect(apiResponse.GatewayPageURL);
-            paymentRoute_1.paymentHistory.set(tran_id, {
-                donor_name: donor_name,
-                donor_email: donor_email,
-                donor_phone: donor_phone,
-                amount: amount,
+            // Create a pending donation record in DB (persistent, survives server restarts)
+            await moneyDonationSchema_1.default.create({
+                tran_id,
+                amount,
+                status: 'PENDING',
+                donor_name,
+                donor_email,
+                donor_phone,
+                currency: 'BDT',
             });
+            res.status(200).json({ url: apiResponse.GatewayPageURL });
             return;
         }
-        console.log(apiResponse);
-        res.status(500).json({ message: "Server Error", error: apiResponse.GatewayPageURL });
+        logger_1.default.error("SSLCommerz init failed:", apiResponse);
+        res.status(500).json({ message: "Payment gateway error" });
         return;
     }
     catch (error) {
-        console.error("Payment processing error:", error);
+        logger_1.default.error("Payment processing error:", error);
         res.status(500).json({ message: "Server Error", error });
         return;
     }

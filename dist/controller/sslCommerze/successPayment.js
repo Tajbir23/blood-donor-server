@@ -8,12 +8,11 @@ const sslcommerz_lts_1 = __importDefault(require("sslcommerz-lts"));
 const paymentRoute_1 = require("../../router/paymentRoute");
 const moneyDonationSchema_1 = __importDefault(require("../../models/donation/moneyDonationSchema"));
 const sendEmail_1 = __importDefault(require("../email/sendEmail"));
+const logger_1 = __importDefault(require("../../utils/logger"));
 const successPayment = async (req, res) => {
     try {
         const { val_id, tran_id, amount, status } = req.body;
-        console.log("req.body", req.body);
         if (!val_id || !tran_id) {
-            console.log("invalid_data");
             res.redirect(`${process.env.FRONTEND_URL}/donation/failed?reason=invalid_data`);
             return;
         }
@@ -57,18 +56,10 @@ const successPayment = async (req, res) => {
             });
             // রেসপন্স পড়া
             const result = await response.json();
-            console.log("API Response:", result);
-            // ইনভয়েস URL বের করা (API রেসপন্সের উপর নির্ভর করে)
-            const paymentHistoryData = await paymentRoute_1.paymentHistory.get(tran_id);
-            // TODO: ডাটাবেসে ডোনেশন স্ট্যাটাস আপডেট করা
-            // Example: await donationModel.updateOne(...);
-            const donation = await moneyDonationSchema_1.default.create({
-                tran_id: tran_id,
-                amount: amount,
+            logger_1.default.info(`Invoice generated for tran_id: ${tran_id}`, result);
+            // ডাটাবেস থেকে pending donation রেকর্ড আপডেট করা
+            const donation = await moneyDonationSchema_1.default.findOneAndUpdate({ tran_id: tran_id }, {
                 status: status,
-                donor_name: paymentHistoryData.donor_name,
-                donor_email: paymentHistoryData.donor_email,
-                donor_phone: paymentHistoryData.donor_phone,
                 invoice_url: `${process.env.BACKEND_URL}/api/payment/invoice/${tran_id}`,
                 card_type: req.body.card_type,
                 bank_tran_id: req.body.bank_tran_id,
@@ -78,14 +69,17 @@ const successPayment = async (req, res) => {
                 card_issuer: req.body.card_issuer,
                 card_brand: req.body.card_brand,
                 card_issuer_country: req.body.card_issuer_country,
-            });
-            await donation.save();
+            }, { new: true });
+            if (!donation) {
+                logger_1.default.error(`No pending donation found for tran_id: ${tran_id}`);
+                return res.redirect(`${process.env.FRONTEND_URL}/donation/failed?reason=record_not_found`);
+            }
             await (0, sendEmail_1.default)({
-                email: paymentHistoryData.donor_email,
+                email: donation.donor_email,
                 subject: "আপনার অর্থ অনুদান সফল ভাবে হয়েছে",
                 templateType: "moneyDonation",
                 templateData: {
-                    donorName: paymentHistoryData.donor_name,
+                    donorName: donation.donor_name,
                     tranId: tran_id,
                     amount: amount,
                     invoiceUrl: `${process.env.BACKEND_URL}/api/payment/invoice/${tran_id}`,
@@ -100,7 +94,7 @@ const successPayment = async (req, res) => {
         }
     }
     catch (error) {
-        console.log("Error:", error);
+        logger_1.default.error("successPayment error:", error);
         return res.redirect(`${process.env.FRONTEND_URL}/donation/failed?reason=server_error`);
     }
 };

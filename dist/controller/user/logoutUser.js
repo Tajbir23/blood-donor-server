@@ -9,6 +9,12 @@ const logoutUser = async (req, res) => {
     const { _id } = req.user;
     (0, removeActiveUser_1.default)(_id);
     await userSchema_1.default.findByIdAndUpdate(_id, { token: null });
+    // Clear the token cookie from the browser
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    });
     res.status(200).json({ success: true, message: "লগ আউট সম্পন্ন হয়েছে" });
 };
 exports.default = logoutUser;
