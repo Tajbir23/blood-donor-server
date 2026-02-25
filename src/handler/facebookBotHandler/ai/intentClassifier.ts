@@ -168,7 +168,11 @@ async function loadSavedModel(): Promise<boolean> {
         }
 
         model = await tf.loadLayersModel(
-            tf.io.fromMemory(artifact.topology, artifact.weightSpecs, buffer)
+            tf.io.fromMemory({
+                modelTopology: artifact.topology,
+                weightSpecs:   artifact.weightSpecs,
+                weightData:    buffer,
+            })
         );
         isTrained = true;
         console.log("[AI] Loaded saved model from disk ✓");

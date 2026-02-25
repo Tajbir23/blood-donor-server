@@ -34,6 +34,10 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const GeoPointSchema = new mongoose_1.Schema({
+    type: { type: String, enum: ["Point"], default: "Point" },
+    coordinates: { type: [Number], default: [0, 0] },
+}, { _id: false });
 const TelegramUserSchema = new mongoose_1.Schema({
     chatId: { type: String, required: true, unique: true },
     username: { type: String, default: null },
@@ -45,13 +49,7 @@ const TelegramUserSchema = new mongoose_1.Schema({
     thanaId: { type: String, required: true },
     latitude: { type: Number, required: true, default: 0 },
     longitude: { type: Number, required: true, default: 0 },
-    location: {
-        type: {
-            type: { type: String, enum: ["Point"], default: "Point" },
-            coordinates: { type: [Number], default: [0, 0] },
-        },
-        default: { type: "Point", coordinates: [0, 0] },
-    },
+    location: { type: GeoPointSchema, default: () => ({ type: "Point", coordinates: [0, 0] }) },
     lastDonationDate: { type: Date, default: null },
 }, { timestamps: true });
 TelegramUserSchema.index({ location: "2dsphere" });
