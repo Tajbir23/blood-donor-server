@@ -4,8 +4,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const handleFbBotMessage_1 = __importDefault(require("../../handler/facebookBotHandler/handleFbBotMessage"));
+const facebookMessageSchema_1 = __importDefault(require("../../models/facebook/facebookMessageSchema"));
 const chatBot = async (req, res) => {
-    var _a, _b, _c, _d, _e;
+    var _a, _b, _c, _d, _e, _f, _g;
     try {
         const body = req.body;
         if (!body || !body.object) {
@@ -45,6 +46,15 @@ const chatBot = async (req, res) => {
                 }
                 const received_text = (_d = webhookEvent.message) === null || _d === void 0 ? void 0 : _d.text;
                 const received_postback = (_e = webhookEvent.postback) === null || _e === void 0 ? void 0 : _e.payload;
+                // Save incoming message to database
+                await facebookMessageSchema_1.default.create({
+                    psId,
+                    messageText: received_text || null,
+                    postback: received_postback || null,
+                    quickReplyPayload: ((_g = (_f = webhookEvent.message) === null || _f === void 0 ? void 0 : _f.quick_reply) === null || _g === void 0 ? void 0 : _g.payload) || null,
+                    direction: "incoming",
+                    rawPayload: webhookEvent,
+                });
                 if (received_text || received_postback) {
                     await (0, handleFbBotMessage_1.default)(received_text, received_postback, psId, quickReplyType);
                 }

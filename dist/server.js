@@ -51,6 +51,8 @@ const donationReminder_1 = __importDefault(require("./cron/donationReminder"));
 const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
 const facebook_bot_Router_1 = __importDefault(require("./router/facebook_bot/facebook_bot_Router"));
+const telegram_bot_Router_1 = __importDefault(require("./router/telegram_bot/telegram_bot_Router"));
+const sendMessageToTgUser_1 = require("./handler/telegramBotHandler/sendMessageToTgUser");
 const setUpGetStartedButton_1 = __importDefault(require("./handler/facebookBotHandler/setUpGetStartedButton"));
 const setUpPersistantMenu_1 = __importDefault(require("./handler/facebookBotHandler/setUpPersistantMenu"));
 const sendEmail_1 = require("./controller/email/sendEmail");
@@ -145,6 +147,7 @@ exports.app.use((err, req, res, next) => {
     });
 });
 exports.app.use('/webhook', facebook_bot_Router_1.default);
+exports.app.use('/telegram-webhook', telegram_bot_Router_1.default);
 exports.activeUsers = [];
 exports.app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
@@ -162,4 +165,14 @@ exports.app.listen(PORT, async () => {
     (0, intentClassifier_1.trainIntentModel)()
         .then(() => console.log('[AI] Bot intent model ready ✓'))
         .catch(err => console.error('[AI] Model training failed:', err));
+    // Register Telegram webhook
+    const backendUrl = process.env.BACKEND_URL;
+    if (backendUrl && process.env.TELEGRAM_BOT_TOKEN) {
+        (0, sendMessageToTgUser_1.setTelegramWebhook)(`${backendUrl}/telegram-webhook`)
+            .then(() => console.log('[TG] Webhook registered ✓'))
+            .catch(err => console.error('[TG] Webhook registration failed:', err));
+    }
+    else {
+        console.warn('[TG] BACKEND_URL or TELEGRAM_BOT_TOKEN missing – webhook not set');
+    }
 });

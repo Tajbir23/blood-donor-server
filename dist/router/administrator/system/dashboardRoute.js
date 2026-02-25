@@ -17,6 +17,9 @@ const createSlider_1 = __importDefault(require("../../../controller/administrato
 const getAllSliders_1 = __importDefault(require("../../../controller/administrator/system/dashboard/slider/getAllSliders"));
 const deleteSlider_1 = __importDefault(require("../../../controller/administrator/system/dashboard/slider/deleteSlider"));
 const toggleActive_1 = __importDefault(require("../../../controller/administrator/system/dashboard/slider/toggleActive"));
+const getFacebookMessages_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getFacebookMessages"));
+const getTelegramMessages_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getTelegramMessages"));
+const verifyIsSuperAdmin_1 = __importDefault(require("../../../handler/validation/verifyIsSuperAdmin"));
 const systemDashboardRoute = (0, express_1.Router)();
 const sliderUpload = (0, imageUpload_1.createImageUpload)('sliderImage', {
     maxWidth: 1000,
@@ -34,4 +37,6 @@ systemDashboardRoute.post('/create-slider', verifyJwt_1.default, verifyIsAdmin_1
 systemDashboardRoute.get('/get-all-sliders', verifyJwt_1.default, verifyIsAdmin_1.default, getAllSliders_1.default);
 systemDashboardRoute.delete('/delete-slider', verifyJwt_1.default, verifyIsAdmin_1.default, deleteSlider_1.default);
 systemDashboardRoute.put('/slider-active-toggle', verifyJwt_1.default, verifyIsAdmin_1.default, toggleActive_1.default);
+systemDashboardRoute.get('/facebook-messages', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getFacebookMessages_1.default);
+systemDashboardRoute.get('/telegram-messages', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getTelegramMessages_1.default);
 exports.default = systemDashboardRoute;

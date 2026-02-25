@@ -23,8 +23,13 @@ function tokenize(text) {
         .split(/\s+/)
         .filter(t => t.length > 0);
 }
-/** Build vocabulary from all training samples */
-function buildVocabulary() {
+/** Build vocabulary from all training samples, or restore from a saved array */
+function buildVocabulary(savedVocab) {
+    if (savedVocab && savedVocab.length > 0) {
+        vocabulary = savedVocab;
+        console.log(`[AI] Vocabulary restored from disk: ${vocabulary.length} tokens`);
+        return;
+    }
     const wordSet = new Set();
     for (const sample of trainingData_1.trainingData) {
         for (const token of tokenize(sample.text)) {

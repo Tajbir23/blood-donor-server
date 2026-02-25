@@ -1,8 +1,10 @@
 "use strict";
 /**
  * Intent Classifier using TensorFlow.js
- * Trains a small Dense neural network at server startup.
- * No external API keys required – runs fully locally.
+ * ─────────────────────────────────────────────────────────────────────────────
+ * • Trains a compact Dense neural network at first startup, then saves to disk.
+ * • On every subsequent restart the saved model is loaded instantly (no training).
+ * • Designed to run comfortably inside 500 MB RAM.
  */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -42,31 +44,32 @@ exports.trainIntentModel = trainIntentModel;
 exports.predictIntent = predictIntent;
 exports.isModelReady = isModelReady;
 const tf = __importStar(require("@tensorflow/tfjs"));
+const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
 const trainingData_1 = require("./trainingData");
 const textPreprocessor_1 = require("./textPreprocessor");
+// ── Paths ─────────────────────────────────────────────────────────────────────
+const MODEL_DIR = path.join(process.cwd(), "ai-model");
 // ── Model singleton ───────────────────────────────────────────────────────────
 let model = null;
 let isTraining = false;
 let isTrained = false;
-const CONFIDENCE_THRESHOLD = 0.45; // below this → UNKNOWN
-// ── Build model architecture ──────────────────────────────────────────────────
+const CONFIDENCE_THRESHOLD = 0.45;
+// ── Build compact model ───────────────────────────────────────────────────────
 function buildModel(inputSize) {
     const m = tf.sequential();
-    // Layer 1
     m.add(tf.layers.dense({
         inputShape: [inputSize],
-        units: 128,
+        units: 64, // 128 → 64  (half the RAM)
         activation: "relu",
         kernelInitializer: "glorotUniform",
     }));
-    m.add(tf.layers.dropout({ rate: 0.4 }));
-    // Layer 2
+    m.add(tf.layers.dropout({ rate: 0.3 }));
     m.add(tf.layers.dense({
-        units: 64,
+        units: 32, // 64 → 32
         activation: "relu",
     }));
-    m.add(tf.layers.dropout({ rate: 0.3 }));
-    // Output
+    m.add(tf.layers.dropout({ rate: 0.2 }));
     m.add(tf.layers.dense({
         units: trainingData_1.INTENTS.length,
         activation: "softmax",
@@ -78,43 +81,117 @@ function buildModel(inputSize) {
     });
     return m;
 }
+const ARTIFACT_PATH = path.join(MODEL_DIR, "model_artifact.json");
+async function saveModelToDisk(m) {
+    var _a, _b;
+    let savedArtifacts = null;
+    // Capture the artifacts without using file:// handler
+    await m.save(tf.io.withSaveHandler(async (artifacts) => {
+        savedArtifacts = artifacts;
+        return { modelArtifactsInfo: { dateSaved: new Date(), modelTopologyType: "JSON" } };
+    }));
+    if (!savedArtifacts)
+        throw new Error("No artifacts captured");
+    const a = savedArtifacts;
+    // Convert binary weight buffer → plain number arrays
+    const weights = (_a = a.weightSpecs) !== null && _a !== void 0 ? _a : [];
+    const buffer = a.weightData instanceof ArrayBuffer
+        ? a.weightData
+        : (_b = a.weightData.buffer) !== null && _b !== void 0 ? _b : a.weightData;
+    let offset = 0;
+    const weightData = weights.map((spec) => {
+        const size = spec.shape.reduce((a, b) => a * b, 1);
+        const arr = Array.from(new Float32Array(buffer, offset, size));
+        offset += size * 4;
+        return arr;
+    });
+    const artifact = {
+        topology: a.modelTopology,
+        weightSpecs: weights,
+        weightData,
+        vocab: (0, textPreprocessor_1.getVocabulary)(),
+    };
+    if (!fs.existsSync(MODEL_DIR))
+        fs.mkdirSync(MODEL_DIR, { recursive: true });
+    fs.writeFileSync(ARTIFACT_PATH, JSON.stringify(artifact));
+    console.log("[AI] Model saved to disk ✓");
+}
+async function loadSavedModel() {
+    if (!fs.existsSync(ARTIFACT_PATH))
+        return false;
+    try {
+        const artifact = JSON.parse(fs.readFileSync(ARTIFACT_PATH, "utf-8"));
+        // Restore vocabulary
+        (0, textPreprocessor_1.buildVocabulary)(artifact.vocab);
+        // Re-pack weight arrays back into an ArrayBuffer
+        const totalFloats = artifact.weightData.reduce((s, arr) => s + arr.length, 0);
+        const buffer = new ArrayBuffer(totalFloats * 4);
+        const view = new Float32Array(buffer);
+        let offset = 0;
+        for (const arr of artifact.weightData) {
+            view.set(arr, offset);
+            offset += arr.length;
+        }
+        model = await tf.loadLayersModel(tf.io.fromMemory(artifact.topology, artifact.weightSpecs, buffer));
+        isTrained = true;
+        console.log("[AI] Loaded saved model from disk ✓");
+        return true;
+    }
+    catch (err) {
+        console.warn("[AI] Could not load saved model, will retrain:", err);
+        // Delete corrupt cache so next start retrains cleanly
+        try {
+            fs.unlinkSync(ARTIFACT_PATH);
+        }
+        catch ( /* ignore */_a) { /* ignore */ }
+        return false;
+    }
+}
 // ── Train the model ───────────────────────────────────────────────────────────
 async function trainIntentModel() {
     if (isTraining || isTrained)
         return;
     isTraining = true;
+    // Try disk cache first
+    if (await loadSavedModel()) {
+        isTraining = false;
+        return;
+    }
     try {
         console.log("[AI] Building vocabulary …");
         (0, textPreprocessor_1.buildVocabulary)();
         const vocab = (0, textPreprocessor_1.getVocabulary)();
         console.log("[AI] Preparing training tensors …");
-        const xs = trainingData_1.trainingData.map(s => (0, textPreprocessor_1.textToVector)(s.text));
-        const ys = trainingData_1.trainingData.map(s => (0, textPreprocessor_1.intentToOneHot)(s.intent));
-        // Data augmentation: shuffle copies
-        const augmented = [...xs.map((x, i) => ({ x, y: ys[i] }))];
-        augmented.sort(() => Math.random() - 0.5); // shuffle
-        const xTensor = tf.tensor2d(augmented.map(a => a.x));
-        const yTensor = tf.tensor2d(augmented.map(a => a.y));
-        console.log(`[AI] Training on ${augmented.length} samples, vocab=${vocab.length} …`);
+        const shuffled = trainingData_1.trainingData
+            .map((s, i) => ({ x: (0, textPreprocessor_1.textToVector)(s.text), y: (0, textPreprocessor_1.intentToOneHot)(s.intent) }))
+            .sort(() => Math.random() - 0.5);
+        const xTensor = tf.tensor2d(shuffled.map(a => a.x));
+        const yTensor = tf.tensor2d(shuffled.map(a => a.y));
+        console.log(`[AI] Training on ${shuffled.length} samples, vocab=${vocab.length} …`);
         model = buildModel(vocab.length);
         await model.fit(xTensor, yTensor, {
-            epochs: 300,
-            batchSize: 8,
+            epochs: 80, // 300 → 80  (converges fine, ~⅓ the RAM spike)
+            batchSize: 16, // 8 → 16  (fewer gradient steps in memory)
             shuffle: true,
             validationSplit: 0.1,
             callbacks: {
                 onEpochEnd: (epoch, logs) => {
                     var _a, _b;
-                    if ((epoch + 1) % 50 === 0 && logs) {
-                        console.log(`[AI] Epoch ${epoch + 1}/300  loss=${(_a = logs["loss"]) === null || _a === void 0 ? void 0 : _a.toFixed(4)}  acc=${(_b = logs["acc"]) === null || _b === void 0 ? void 0 : _b.toFixed(4)}`);
+                    if ((epoch + 1) % 20 === 0 && logs) {
+                        console.log(`[AI] Epoch ${epoch + 1}/80  loss=${(_a = logs["loss"]) === null || _a === void 0 ? void 0 : _a.toFixed(4)}  acc=${(_b = logs["acc"]) === null || _b === void 0 ? void 0 : _b.toFixed(4)}`);
                     }
                 },
             },
         });
         xTensor.dispose();
         yTensor.dispose();
+        // Save to disk so next restart skips training entirely
+        await saveModelToDisk(model);
         isTrained = true;
         console.log("[AI] Intent model training complete ✓");
+        // Suggest GC after the big allocation
+        if (typeof global.gc === "function")
+            global.gc();
     }
     catch (err) {
         console.error("[AI] Training error:", err);
@@ -127,16 +204,14 @@ async function trainIntentModel() {
 }
 async function predictIntent(text) {
     if (!isTrained || !model) {
-        // Fallback: keyword-based classification while model trains
         return keywordFallback(text);
     }
-    const vector = (0, textPreprocessor_1.textToVector)(text);
-    const inputTensor = tf.tensor2d([vector]);
-    const outputTensor = model.predict(inputTensor);
-    const outputArray = (await outputTensor.data());
-    inputTensor.dispose();
-    outputTensor.dispose();
-    const scores = Array.from(outputArray);
+    // tf.tidy disposes all intermediate tensors automatically
+    const scores = tf.tidy(() => {
+        const inputTensor = tf.tensor2d([(0, textPreprocessor_1.textToVector)(text)]);
+        const outputTensor = model.predict(inputTensor);
+        return Array.from(outputTensor.dataSync());
+    });
     const intent = (0, textPreprocessor_1.vectorToIntent)(scores);
     const conf = (0, textPreprocessor_1.confidence)(scores);
     const scoreMap = {};
@@ -153,35 +228,30 @@ async function predictIntent(text) {
 /** Quick keyword-based fallback used before/if TF model is ready */
 function keywordFallback(text) {
     const lower = text.toLowerCase();
-    const findBloodKeywords = [
-        "রক্ত দরকার", "রক্ত চাই", "রক্তদাতা", "blood needed", "need blood",
+    const dummy = Object.fromEntries(trainingData_1.INTENTS.map(k => [k, 0]));
+    const hit = (keywords) => keywords.some(k => lower.includes(k));
+    if (hit(["রক্ত দরকার", "রক্ত চাই", "রক্তদাতা", "blood needed", "need blood",
         "blood donor", "find blood", "ডোনার দরকার", "ডোনার খুঁজছি",
-        "রক্ত লাগবে", "রক্ত খুঁজছি", "blood urgently", "a+", "b+", "o+", "ab+",
-        "a-", "b-", "o-", "ab-",
-    ];
-    const registerKeywords = [
-        "register", "donate blood", "become donor", "রেজিস্ট্রেশন",
-        "রক্তদান করতে চাই", "ডোনার হতে চাই", "নিবন্ধন",
-    ];
-    const updateKeywords = [
-        "update", "donated today", "gave blood", "আপডেট", "রক্ত দিয়েছি",
-    ];
-    const helpKeywords = ["help", "menu", "সাহায্য", "মেনু"];
-    const greetKeywords = ["hello", "hi", "hey", "হ্যালো", "হাই", "সালাম"];
-    const dummy = { FIND_BLOOD: 0, REGISTER_DONOR: 0, UPDATE_DONATION: 0, REQUEST_BLOOD: 0, GREET: 0, HELP: 0, UNKNOWN: 0 };
-    if (findBloodKeywords.some(k => lower.includes(k))) {
+        "রক্ত লাগবে", "রক্ত খুঁজছি", "blood urgently",
+        "a+", "b+", "o+", "ab+", "a-", "b-", "o-", "ab-"])) {
         return { intent: "FIND_BLOOD", confidence: 0.8, scores: { ...dummy, FIND_BLOOD: 0.8 } };
     }
-    if (registerKeywords.some(k => lower.includes(k))) {
+    if (hit(["রক্ত দেওয়ার বয়স", "কতদিন পর", "ট্যাটু", "tattoo", "eligib",
+        "রক্ত দিতে পারব", "কতবার", "থ্যালাসেমিয়া", "thalassemia",
+        "ডায়াবেটিস", "pregnancy", "গর্ভাবস্থা", "রক্ত দেওয়ার পর"])) {
+        return { intent: "BLOOD_INFO", confidence: 0.8, scores: { ...dummy, BLOOD_INFO: 0.8 } };
+    }
+    if (hit(["register", "donate blood", "become donor", "রেজিস্ট্রেশন",
+        "রক্তদান করতে চাই", "ডোনার হতে চাই", "নিবন্ধন"])) {
         return { intent: "REGISTER_DONOR", confidence: 0.8, scores: { ...dummy, REGISTER_DONOR: 0.8 } };
     }
-    if (updateKeywords.some(k => lower.includes(k))) {
+    if (hit(["update", "donated today", "gave blood", "আপডেট", "রক্ত দিয়েছি"])) {
         return { intent: "UPDATE_DONATION", confidence: 0.8, scores: { ...dummy, UPDATE_DONATION: 0.8 } };
     }
-    if (helpKeywords.some(k => lower.includes(k))) {
+    if (hit(["help", "menu", "সাহায্য", "মেনু"])) {
         return { intent: "HELP", confidence: 0.8, scores: { ...dummy, HELP: 0.8 } };
     }
-    if (greetKeywords.some(k => lower.includes(k))) {
+    if (hit(["hello", "hi", "hey", "হ্যালো", "হাই", "সালাম"])) {
         return { intent: "GREET", confidence: 0.8, scores: { ...dummy, GREET: 0.8 } };
     }
     return { intent: "UNKNOWN", confidence: 0, scores: dummy };
