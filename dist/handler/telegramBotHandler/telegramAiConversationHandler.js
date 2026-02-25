@@ -10,6 +10,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.clearTgAiState = clearTgAiState;
+exports.handleTgLocationSuggest = handleTgLocationSuggest;
 exports.handleTgAiMessage = handleTgAiMessage;
 const intentClassifier_1 = require("../facebookBotHandler/ai/intentClassifier");
 const entityExtractor_1 = require("../facebookBotHandler/ai/entityExtractor");
@@ -39,6 +40,33 @@ function updateState(chatId, updates) {
 }
 function clearTgAiState(chatId) {
     tgStateMap.delete(chatId);
+}
+/**
+ * Called when a user selects a LOC_SUGGEST suggestion button.
+ * Finds the entity by ID, stores it in state, and continues the flow.
+ */
+async function handleTgLocationSuggest(chatId, locationId) {
+    const entity = (0, entityExtractor_1.findLocationById)(locationId);
+    if (!entity) {
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকা নির্ধারণ করা যায়নি। আপনার এলাকার নাম লিখুন:");
+        return;
+    }
+    updateState(chatId, { location: entity, awaitingInput: null });
+    const fresh = getState(chatId);
+    const coords = resolveCoordinates(entity);
+    if (fresh.bloodGroup && coords) {
+        await sendDonorResults(chatId, coords.latitude, coords.longitude, fresh.bloodGroup, fresh.bagCount, fresh.isUrgent);
+        return;
+    }
+    if (!fresh.bloodGroup) {
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboard)(chatId, `✅ <b>${entity.name}</b> বোঝা গেছে। এখন রক্তের গ্রুপ বেছে নিন:`, BLOOD_GROUP_ROWS);
+        updateState(chatId, { awaitingInput: "blood_group" });
+        return;
+    }
+    if (!coords) {
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${entity.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট এলাকার নাম লিখুন:`);
+        updateState(chatId, { awaitingInput: "location" });
+    }
 }
 // ── Coordinate resolver ───────────────────────────────────────────────────────
 function resolveCoordinates(loc) {
@@ -144,7 +172,15 @@ async function handleTgAiMessage(chatId, text) {
                 return true;
             }
             else {
-                await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে এলাকার নাম লিখুন (যেমন: ঢাকা, Mirpur, Chittagong):");
+                // Exact match failed → fuzzy suggestions as inline buttons
+                const suggestions = (0, entityExtractor_1.suggestLocations)(text, 5);
+                if (suggestions.length > 0) {
+                    const rows = suggestions.map(s => [{ label: `📍 ${s.name}`, data: `LOC_SUGGEST:${s.id}` }]);
+                    await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "এলাকাটি সঠিকভাবে বোঝা যায়নি। এগুলোর মধ্যে কোনটি বোঝাতে চেয়েছেন?", rows);
+                }
+                else {
+                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে এলাকার নাম লিখুন (যেমন: ঢাকা, Mirpur, Chittagong):");
+                }
                 return true;
             }
         }

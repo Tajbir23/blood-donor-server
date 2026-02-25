@@ -235,7 +235,15 @@ async function handleAiMessage(psId, text) {
                 return true;
             }
             else {
-                await (0, sendMessageToFbUser_1.default)(psId, "এলাকার নাম বুঝতে পারিনি। অনুগ্রহ করে বাংলায় বা ইংরেজিতে এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, Chittagong):");
+                // Exact match failed → fuzzy suggestions
+                const suggestions = (0, entityExtractor_1.suggestLocations)(text, 5);
+                if (suggestions.length > 0) {
+                    const names = suggestions.map(s => s.name.slice(0, 20)); // FB quick-reply max 20 chars
+                    await (0, quickReply_1.default)(psId, "এলাকাটি সঠিকভাবে বোঝা যায়নি। এগুলোর মধ্যে কোনটি বোঝাতে চেয়েছেন?", names);
+                }
+                else {
+                    await (0, sendMessageToFbUser_1.default)(psId, "এলাকার নাম বুঝতে পারিনি। অনুগ্রহ করে বাংলায় বা ইংরেজিতে এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, Chittagong):");
+                }
                 return true;
             }
         }

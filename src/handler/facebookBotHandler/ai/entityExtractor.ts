@@ -266,6 +266,88 @@ function getLocationIndex(): LocationIndex {
     return locationIndex;
 }
 
+// ── Character overlap scoring (0-1) ─────────────────────────────────────────
+function charOverlapScore(a: string, b: string): number {
+    if (a.length === 0 || b.length === 0) return 0;
+    const longer  = a.length >= b.length ? a : b;
+    const shorter = a.length <  b.length ? a : b;
+    const used = new Array(longer.length).fill(false);
+    let matches = 0;
+    for (const ch of shorter) {
+        const idx = longer.split("").findIndex((c, i) => c === ch && !used[i]);
+        if (idx !== -1) { matches++; used[idx] = true; }
+    }
+    return matches / longer.length;
+}
+
+/**
+ * Fuzzy-search the location index and return the top `limit` closest matches.
+ * Used when exact extraction fails so the bot can suggest alternatives.
+ */
+export function suggestLocations(text: string, limit = 5): LocationEntity[] {
+    const cleaned = text.toLowerCase().normalize("NFC").trim();
+    const inputTokens = cleaned.split(/[\s,।\-_]+/).filter(t => t.length >= 2);
+    if (inputTokens.length === 0) return [];
+
+    const index = getLocationIndex();
+    const scored: { entity: LocationEntity; score: number }[] = [];
+
+    for (const entry of index.entries) {
+        let bestScore = 0;
+        for (const pattern of entry.patterns) {
+            const p = pattern.toLowerCase();
+            if (p.length < 2) continue;
+
+            // Exact substring
+            if (cleaned.includes(p) || p.includes(cleaned)) {
+                bestScore = Math.max(bestScore, 0.95);
+                continue;
+            }
+            // Token-level matching
+            for (const token of inputTokens) {
+                if (token.length < 2) continue;
+                if (p.includes(token)) {
+                    bestScore = Math.max(bestScore, 0.5 + (token.length / p.length) * 0.4);
+                } else if (token.includes(p)) {
+                    bestScore = Math.max(bestScore, 0.5 + (p.length / token.length) * 0.4);
+                } else {
+                    const ov = charOverlapScore(token, p);
+                    if (ov >= 0.6) bestScore = Math.max(bestScore, ov * 0.65);
+                }
+            }
+        }
+        if (bestScore >= 0.3) scored.push({ entity: entry.entity, score: bestScore });
+    }
+
+    // Sort: higher score first; among equal scores prefer thana > district > division
+    scored.sort((a, b) => {
+        if (Math.abs(a.score - b.score) > 0.05) return b.score - a.score;
+        const order = { thana: 0, district: 1, division: 2 } as const;
+        return order[a.entity.type] - order[b.entity.type];
+    });
+
+    // Deduplicate by id
+    const seen = new Set<string>();
+    const results: LocationEntity[] = [];
+    for (const { entity } of scored) {
+        if (!seen.has(entity.id)) {
+            seen.add(entity.id);
+            results.push(entity);
+            if (results.length >= limit) break;
+        }
+    }
+    return results;
+}
+
+/**
+ * Look up a location entity by its exact ID string.
+ */
+export function findLocationById(id: string): LocationEntity | null {
+    const index = getLocationIndex();
+    const entry = index.entries.find(e => e.entity.id === id);
+    return entry?.entity ?? null;
+}
+
 /**
  * Extract the best-matching location from free-form text.
  * Prefers more-specific matches (thana > district > division).

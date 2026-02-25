@@ -4,7 +4,7 @@
  */
 
 import { sendTgMessage, sendTgInlineKeyboard, sendTgUrlButton } from "./sendMessageToTgUser";
-import { handleTgAiMessage, clearTgAiState } from "./telegramAiConversationHandler";
+import { handleTgAiMessage, clearTgAiState, handleTgLocationSuggest } from "./telegramAiConversationHandler";
 import {
     isInTgRegistration,
     handleTgRegisterText,
@@ -129,6 +129,13 @@ export const handleTgCallbackQuery = async (
     const bloodGroups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
     if (bloodGroups.includes(d)) {
         await handleTgAiMessage(chatId, d);
+        return;
+    }
+
+    // ── Location suggestion selection ──────────────────────────────────────────
+    if (d.startsWith("LOC_SUGGEST:")) {
+        const locationId = d.slice(12);
+        await handleTgLocationSuggest(chatId, locationId);
         return;
     }
 

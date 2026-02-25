@@ -10,6 +10,8 @@ import {
     extractEntities,
     extractBloodGroup,
     extractLocation,
+    suggestLocations,
+    findLocationById,
     getThanaCoordinates,
     getDistrictCoordinates,
     getDivisionCoordinates,
@@ -19,6 +21,7 @@ import { findFaqAnswer } from "../facebookBotHandler/ai/faqKnowledgeBase";
 import {
     sendTgMessage,
     sendTgInlineKeyboard,
+    sendTgInlineKeyboardData,
     sendTgUrlButton,
 } from "./sendMessageToTgUser";
 import { startTgRegistration } from "./telegramRegisterHandler";
@@ -33,6 +36,7 @@ interface TgConversationState {
     bagCount: number | null;
     isUrgent: boolean;
     awaitingInput: "blood_group" | "location" | null;
+    awaitingLocationSelect?: boolean; // true while suggestion buttons are visible
     lastUpdated: number;
 }
 
@@ -61,6 +65,43 @@ function updateState(chatId: string, updates: Partial<TgConversationState>) {
 
 export function clearTgAiState(chatId: string) {
     tgStateMap.delete(chatId);
+}
+
+/**
+ * Called when a user selects a LOC_SUGGEST suggestion button.
+ * Finds the entity by ID, stores it in state, and continues the flow.
+ */
+export async function handleTgLocationSuggest(chatId: string, locationId: string): Promise<void> {
+    const entity = findLocationById(locationId);
+    if (!entity) {
+        await sendTgMessage(chatId, "এলাকা নির্ধারণ করা যায়নি। আপনার এলাকার নাম লিখুন:");
+        return;
+    }
+
+    updateState(chatId, { location: entity, awaitingInput: null });
+    const fresh = getState(chatId);
+
+    const coords = resolveCoordinates(entity);
+
+    if (fresh.bloodGroup && coords) {
+        await sendDonorResults(chatId, coords.latitude, coords.longitude, fresh.bloodGroup, fresh.bagCount, fresh.isUrgent);
+        return;
+    }
+
+    if (!fresh.bloodGroup) {
+        await sendTgInlineKeyboard(
+            chatId,
+            `✅ <b>${entity.name}</b> বোঝা গেছে। এখন রক্তের গ্রুপ বেছে নিন:`,
+            BLOOD_GROUP_ROWS
+        );
+        updateState(chatId, { awaitingInput: "blood_group" });
+        return;
+    }
+
+    if (!coords) {
+        await sendTgMessage(chatId, `${entity.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট এলাকার নাম লিখুন:`);
+        updateState(chatId, { awaitingInput: "location" });
+    }
 }
 
 // ── Coordinate resolver ───────────────────────────────────────────────────────
@@ -180,7 +221,18 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 updateState(chatId, { awaitingInput: "blood_group" });
                 return true;
             } else {
-                await sendTgMessage(chatId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে এলাকার নাম লিখুন (যেমন: ঢাকা, Mirpur, Chittagong):");
+                // Exact match failed → fuzzy suggestions as inline buttons
+                const suggestions = suggestLocations(text, 5);
+                if (suggestions.length > 0) {
+                    const rows = suggestions.map(s => [{ label: `📍 ${s.name}`, data: `LOC_SUGGEST:${s.id}` }]);
+                    await sendTgInlineKeyboardData(
+                        chatId,
+                        "এলাকাটি সঠিকভাবে বোঝা যায়নি। এগুলোর মধ্যে কোনটি বোঝাতে চেয়েছেন?",
+                        rows
+                    );
+                } else {
+                    await sendTgMessage(chatId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে এলাকার নাম লিখুন (যেমন: ঢাকা, Mirpur, Chittagong):");
+                }
                 return true;
             }
         }

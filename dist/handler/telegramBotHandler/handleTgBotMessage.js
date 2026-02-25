@@ -93,6 +93,12 @@ const handleTgCallbackQuery = async (chatId, data, username, firstName) => {
         await (0, telegramAiConversationHandler_1.handleTgAiMessage)(chatId, d);
         return;
     }
+    // ── Location suggestion selection ──────────────────────────────────────────
+    if (d.startsWith("LOC_SUGGEST:")) {
+        const locationId = d.slice(12);
+        await (0, telegramAiConversationHandler_1.handleTgLocationSuggest)(chatId, locationId);
+        return;
+    }
     // ── Any other callback: treat as natural-language text ─────────────────────
     await (0, telegramAiConversationHandler_1.handleTgAiMessage)(chatId, d);
 };
