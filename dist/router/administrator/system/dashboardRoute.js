@@ -23,6 +23,9 @@ const addAiTrainingData_1 = __importDefault(require("../../../controller/adminis
 const getAiTrainingData_1 = __importDefault(require("../../../controller/administrator/system/dashboard/ai/getAiTrainingData"));
 const deleteAiTrainingData_1 = __importDefault(require("../../../controller/administrator/system/dashboard/ai/deleteAiTrainingData"));
 const verifyIsSuperAdmin_1 = __importDefault(require("../../../handler/validation/verifyIsSuperAdmin"));
+const getTgBroadcastCount_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getTgBroadcastCount"));
+const sendTgBroadcast_1 = __importDefault(require("../../../controller/administrator/system/dashboard/sendTgBroadcast"));
+const getTgBroadcastLocations_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getTgBroadcastLocations"));
 const systemDashboardRoute = (0, express_1.Router)();
 const sliderUpload = (0, imageUpload_1.createImageUpload)('sliderImage', {
     maxWidth: 1000,
@@ -46,4 +49,8 @@ systemDashboardRoute.get('/telegram-messages', verifyJwt_1.default, verifyIsSupe
 systemDashboardRoute.get('/ai-training', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getAiTrainingData_1.default);
 systemDashboardRoute.post('/ai-training', verifyJwt_1.default, verifyIsSuperAdmin_1.default, addAiTrainingData_1.default);
 systemDashboardRoute.delete('/ai-training/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, deleteAiTrainingData_1.default);
+// Telegram Broadcast routes (superAdmin only)
+systemDashboardRoute.get('/tg-broadcast/locations', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getTgBroadcastLocations_1.default);
+systemDashboardRoute.get('/tg-broadcast/count', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getTgBroadcastCount_1.default);
+systemDashboardRoute.post('/tg-broadcast', verifyJwt_1.default, verifyIsSuperAdmin_1.default, sendTgBroadcast_1.default);
 exports.default = systemDashboardRoute;

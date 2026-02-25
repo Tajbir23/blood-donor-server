@@ -18,6 +18,9 @@ import addAiTrainingData from "../../../controller/administrator/system/dashboar
 import getAiTrainingData from "../../../controller/administrator/system/dashboard/ai/getAiTrainingData";
 import deleteAiTrainingData from "../../../controller/administrator/system/dashboard/ai/deleteAiTrainingData";
 import verifyIsSuperAdmin from "../../../handler/validation/verifyIsSuperAdmin";
+import getTgBroadcastCount from "../../../controller/administrator/system/dashboard/getTgBroadcastCount";
+import sendTgBroadcast from "../../../controller/administrator/system/dashboard/sendTgBroadcast";
+import getTgBroadcastLocations from "../../../controller/administrator/system/dashboard/getTgBroadcastLocations";
 
 const systemDashboardRoute = Router();
 
@@ -46,5 +49,10 @@ systemDashboardRoute.get('/telegram-messages', verifyJwt, verifyIsSuperAdmin, ge
 systemDashboardRoute.get('/ai-training',          verifyJwt, verifyIsSuperAdmin, getAiTrainingData)
 systemDashboardRoute.post('/ai-training',         verifyJwt, verifyIsSuperAdmin, addAiTrainingData)
 systemDashboardRoute.delete('/ai-training/:id',   verifyJwt, verifyIsSuperAdmin, deleteAiTrainingData)
+
+// Telegram Broadcast routes (superAdmin only)
+systemDashboardRoute.get('/tg-broadcast/locations', verifyJwt, verifyIsSuperAdmin, getTgBroadcastLocations)
+systemDashboardRoute.get('/tg-broadcast/count',     verifyJwt, verifyIsSuperAdmin, getTgBroadcastCount)
+systemDashboardRoute.post('/tg-broadcast',          verifyJwt, verifyIsSuperAdmin, sendTgBroadcast)
 
 export default systemDashboardRoute;
