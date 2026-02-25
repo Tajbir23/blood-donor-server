@@ -23,13 +23,11 @@ const manageOrg = async (req: Request, res: Response) => {
 
     if(status === 'active'){
         organization.isActive = true;
-    }else if(status === 'inactive'){
-        organization.isActive = false;
+        organization.isBanned = false;
     }else if(status === 'ban'){
         organization.isActive = false;
         organization.isBanned = true;
     }else if(status === 'unban'){
-        console.log("unban")
         organization.isActive = true;
         organization.isBanned = false;
     }else if(status === 'delete'){

@@ -292,13 +292,14 @@ const getDashboardData = async (req: Request, res: Response) => {
     const {timeRange = '7days'} = req.query;
 
     try {
-        const [statistics, bloodInventory, recentDonations, donationsChartData, topOrgs, totalOrganizations] = await Promise.all([
+        const [statistics, bloodInventory, recentDonations, donationsChartData, topOrgs, totalOrganizations, pendingOrganizations] = await Promise.all([
             getStatistics(),
             getBloodInventory(),
             getRecentDonations(),
             getdonationsChartData(timeRange as string),
             topOrganizations(),
-            organizationModel.countDocuments({isActive: true})
+            organizationModel.countDocuments({isActive: true}),
+            organizationModel.countDocuments({isActive: false, isBanned: false})
         ]);
 
         res.status(200).json({
@@ -307,6 +308,7 @@ const getDashboardData = async (req: Request, res: Response) => {
             recentDonations,
             donationsChartData,
             totalOrganizations,
+            pendingOrganizations,
             topOrgs
         })
     } catch (error) {

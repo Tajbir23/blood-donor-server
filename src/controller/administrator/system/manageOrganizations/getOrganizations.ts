@@ -19,12 +19,14 @@ const getOrganizations = async (req: Request, res: Response) => {
         
         // Only add status conditions if status is specified
         if (status) {
-            query.isActive = status === 'active' ? true : status === 'inactive' ? false : true;
-            if (status === 'ban') {
-                query.isBanned = true;
-                query.isActive = false;
-            } else {
+            if (status === 'active') {
+                query.isActive = true;
                 query.isBanned = false;
+            } else if (status === 'pending') {
+                query.isActive = false;
+                query.isBanned = false;
+            } else if (status === 'ban') {
+                query.isBanned = true;
             }
         }
         
