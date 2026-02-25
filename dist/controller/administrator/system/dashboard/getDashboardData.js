@@ -267,13 +267,14 @@ const topOrganizations = async () => {
 const getDashboardData = async (req, res) => {
     const { timeRange = '7days' } = req.query;
     try {
-        const [statistics, bloodInventory, recentDonations, donationsChartData, topOrgs, totalOrganizations] = await Promise.all([
+        const [statistics, bloodInventory, recentDonations, donationsChartData, topOrgs, totalOrganizations, pendingOrganizations] = await Promise.all([
             getStatistics(),
             getBloodInventory(),
             getRecentDonations(),
             getdonationsChartData(timeRange),
             topOrganizations(),
-            organizationSchema_1.default.countDocuments({ isActive: true })
+            organizationSchema_1.default.countDocuments({ isActive: true }),
+            organizationSchema_1.default.countDocuments({ isActive: false, isBanned: false })
         ]);
         res.status(200).json({
             statistics,
@@ -281,6 +282,7 @@ const getDashboardData = async (req, res) => {
             recentDonations,
             donationsChartData,
             totalOrganizations,
+            pendingOrganizations,
             topOrgs
         });
     }
