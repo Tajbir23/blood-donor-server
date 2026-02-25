@@ -12,9 +12,18 @@ import {
     startTgRegistration,
     clearTgRegistration,
 } from "./telegramRegisterHandler";
+import {
+    isInTgProfileUpdate,
+    startTgProfileUpdate,
+    startTgDonationDateUpdate,
+    handleTgProfileText,
+    handleTgProfileCallback,
+    clearTgProfileUpdate,
+} from "./telegramProfileHandler";
 
 const MAIN_MENU_ROWS = [
     ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+    ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
     ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
 ];
 
@@ -36,7 +45,11 @@ export const handleTgTextMessage = async (
     firstName?: string
 ): Promise<void> => {
     const trimmed = text.trim();
-
+    // ── If user is in profile-update flow, route text there ────────────────────
+    if (isInTgProfileUpdate(chatId)) {
+        await handleTgProfileText(chatId, trimmed);
+        return;
+    }
     // ── If user is in registration flow, route text there first ───────────────
     if (isInTgRegistration(chatId)) {
         await handleTgRegisterText(chatId, trimmed);
@@ -57,6 +70,14 @@ export const handleTgTextMessage = async (
             "অথবা নিচের মেনু ব্যবহার করুন 👇"
         );
         await showMainMenu(chatId);
+        return;
+    }
+
+    // ── /profile command ────────────────────────────────────────────────────
+    if (trimmed === "/profile") {
+        clearTgAiState(chatId);
+        clearTgRegistration(chatId);
+        await startTgProfileUpdate(chatId);
         return;
     }
 
@@ -82,6 +103,12 @@ export const handleTgCallbackQuery = async (
 ): Promise<void> => {
     const d = data.trim();
 
+    // ── Profile flow callbacks (PROF_) ────────────────────────────────────────
+    if (isInTgProfileUpdate(chatId) || d.startsWith("PROF_")) {
+        const handled = await handleTgProfileCallback(chatId, d);
+        if (handled) return;
+    }
+
     // ── Registration flow callbacks ────────────────────────────────────────────
     if (isInTgRegistration(chatId)) {
         const handled = await handleTgRegisterCallback(chatId, d);
@@ -106,7 +133,22 @@ export const handleTgCallbackQuery = async (
     if (d === "📝 ডোনার নিবন্ধন") {
         clearTgAiState(chatId);
         clearTgRegistration(chatId);
+        clearTgProfileUpdate(chatId);
         await startTgRegistration(chatId, username, firstName);
+        return;
+    }
+
+    if (d === "🔄 প্রোফাইল আপডেট") {
+        clearTgAiState(chatId);
+        clearTgRegistration(chatId);
+        await startTgProfileUpdate(chatId);
+        return;
+    }
+
+    if (d === "📅 শেষ দান আপডেট") {
+        clearTgAiState(chatId);
+        clearTgRegistration(chatId);
+        await startTgDonationDateUpdate(chatId);
         return;
     }
 

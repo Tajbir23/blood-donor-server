@@ -8,8 +8,10 @@ exports.handleTgCallbackQuery = exports.handleTgTextMessage = void 0;
 const sendMessageToTgUser_1 = require("./sendMessageToTgUser");
 const telegramAiConversationHandler_1 = require("./telegramAiConversationHandler");
 const telegramRegisterHandler_1 = require("./telegramRegisterHandler");
+const telegramProfileHandler_1 = require("./telegramProfileHandler");
 const MAIN_MENU_ROWS = [
     ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+    ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
     ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
 ];
 const showMainMenu = async (chatId, greeting) => {
@@ -20,6 +22,11 @@ const showMainMenu = async (chatId, greeting) => {
  */
 const handleTgTextMessage = async (chatId, text, username, firstName) => {
     const trimmed = text.trim();
+    // ── If user is in profile-update flow, route text there ────────────────────
+    if ((0, telegramProfileHandler_1.isInTgProfileUpdate)(chatId)) {
+        await (0, telegramProfileHandler_1.handleTgProfileText)(chatId, trimmed);
+        return;
+    }
     // ── If user is in registration flow, route text there first ───────────────
     if ((0, telegramRegisterHandler_1.isInTgRegistration)(chatId)) {
         await (0, telegramRegisterHandler_1.handleTgRegisterText)(chatId, trimmed);
@@ -38,6 +45,13 @@ const handleTgTextMessage = async (chatId, text, username, firstName) => {
         await showMainMenu(chatId);
         return;
     }
+    // ── /profile command ────────────────────────────────────────────────────
+    if (trimmed === "/profile") {
+        (0, telegramAiConversationHandler_1.clearTgAiState)(chatId);
+        (0, telegramRegisterHandler_1.clearTgRegistration)(chatId);
+        await (0, telegramProfileHandler_1.startTgProfileUpdate)(chatId);
+        return;
+    }
     // ── /help command ──────────────────────────────────────────────────────────
     if (trimmed === "/help") {
         await (0, telegramAiConversationHandler_1.handleTgAiMessage)(chatId, "help");
@@ -53,6 +67,12 @@ exports.handleTgTextMessage = handleTgTextMessage;
  */
 const handleTgCallbackQuery = async (chatId, data, username, firstName) => {
     const d = data.trim();
+    // ── Profile flow callbacks (PROF_) ────────────────────────────────────────
+    if ((0, telegramProfileHandler_1.isInTgProfileUpdate)(chatId) || d.startsWith("PROF_")) {
+        const handled = await (0, telegramProfileHandler_1.handleTgProfileCallback)(chatId, d);
+        if (handled)
+            return;
+    }
     // ── Registration flow callbacks ────────────────────────────────────────────
     if ((0, telegramRegisterHandler_1.isInTgRegistration)(chatId)) {
         const handled = await (0, telegramRegisterHandler_1.handleTgRegisterCallback)(chatId, d);
@@ -76,7 +96,20 @@ const handleTgCallbackQuery = async (chatId, data, username, firstName) => {
     if (d === "📝 ডোনার নিবন্ধন") {
         (0, telegramAiConversationHandler_1.clearTgAiState)(chatId);
         (0, telegramRegisterHandler_1.clearTgRegistration)(chatId);
+        (0, telegramProfileHandler_1.clearTgProfileUpdate)(chatId);
         await (0, telegramRegisterHandler_1.startTgRegistration)(chatId, username, firstName);
+        return;
+    }
+    if (d === "🔄 প্রোফাইল আপডেট") {
+        (0, telegramAiConversationHandler_1.clearTgAiState)(chatId);
+        (0, telegramRegisterHandler_1.clearTgRegistration)(chatId);
+        await (0, telegramProfileHandler_1.startTgProfileUpdate)(chatId);
+        return;
+    }
+    if (d === "📅 শেষ দান আপডেট") {
+        (0, telegramAiConversationHandler_1.clearTgAiState)(chatId);
+        (0, telegramRegisterHandler_1.clearTgRegistration)(chatId);
+        await (0, telegramProfileHandler_1.startTgDonationDateUpdate)(chatId);
         return;
     }
     if (d === "❓ সাহায্য") {
