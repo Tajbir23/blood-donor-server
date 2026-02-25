@@ -16,9 +16,19 @@ interface UserData {
     thanaId?: string;
     latitude?: string;
     longitude?: string;
+    phoneNumber?: string;
     bloodGroup?: string;
     fullName?: string;
+    awaitingPhone?: boolean;
     flowType?: 'register' | 'findBlood';
+}
+
+// Validate Bangladeshi mobile numbers
+function isValidBDPhone(phone: string): boolean {
+    return /^(?:\+?88)?01[3-9]\d{8}$/.test(phone.trim());
+}
+function normalizeBDPhone(phone: string): string {
+    return phone.trim().replace(/^\+?88/, "");
 }
 
 const getUserProfile = async (psId: string) => {
@@ -80,19 +90,46 @@ const registerFbUser = async (psId: string, received_text: string, received_post
             userAdressMap.set(psId, {
                 ...userData,
                 fullName: profile.fullName,
-                flowType: "register"
+                flowType: "register",
+                awaitingPhone: true,
             });
             
-            // Send welcome message
+            // Ask for phone number first
+            await sendMessageToFbUser(
+                psId,
+                `ধন্যবাদ ${profile.firstName}! রেজিস্ট্রেশন শুরু করুন।\n\n` +
+                `আপনার মোবাইল নম্বর লিখুন (যেমন: 01712345678):`
+            );
+            return;
+        }
+        
+        // Handle phone number input
+        if (userData.awaitingPhone) {
+            const phone = received_text?.trim() || "";
+            if (!isValidBDPhone(phone)) {
+                await sendMessageToFbUser(
+                    psId,
+                    "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
+                    "নম্বর অবশ্যই 01 দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
+                    "(যেমন: 01712345678)"
+                );
+                return;
+            }
+            userAdressMap.set(psId, {
+                ...userData,
+                phoneNumber: normalizeBDPhone(phone),
+                awaitingPhone: false,
+                flowType: "register",
+            });
             await quickReply(
                 psId,
-                `ধন্যবাদ ${profile.firstName}! রেজিস্ট্রেশন শুরু করুন। আপনার রক্তের গ্রুপ নির্বাচন করুন:`,
+                `✅ মোবাইল নম্বর সংরক্ষিত হয়েছে।\n\nএখন আপনার রক্তের গ্রুপ নির্বাচন করুন:`,
                 ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
                 "bloodGroup"
             );
             return;
         }
-        
+
         // Handle blood group selection
         if (quickReplyType === "bloodGroup") {
             userAdressMap.set(psId, {
@@ -173,7 +210,7 @@ const registerFbUser = async (psId: string, received_text: string, received_post
             // Show confirmation with all collected data
             const updatedUserData = userAdressMap.get(psId);
             
-            await sendMessageToFbUser(psId, `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData?.fullName}\nরক্তের গ্রুপ: ${updatedUserData?.bloodGroup}\nবিভাগ: ${updatedUserData?.divisionId}\nজেলা: ${updatedUserData?.districtId}\nথানা: ${updatedUserData?.thanaId}`)
+            await sendMessageToFbUser(psId, `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData?.fullName}\nমোবাইল: ${updatedUserData?.phoneNumber}\nরক্তের গ্রুপ: ${updatedUserData?.bloodGroup}\nবিভাগ: ${updatedUserData?.divisionId}\nজেলা: ${updatedUserData?.districtId}\nথানা: ${updatedUserData?.thanaId}`)
             await quickReply(
                 psId,
                 `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData?.fullName}\nরক্তের গ্রুপ: ${updatedUserData?.bloodGroup}\nবিভাগ: ${updatedUserData?.divisionId}\nজেলা: ${updatedUserData?.districtId}\nথানা: ${updatedUserData?.thanaId}`,
@@ -210,11 +247,12 @@ const registerFbUser = async (psId: string, received_text: string, received_post
                     const longitude = updatedUserData?.longitude ? parseFloat(updatedUserData?.longitude) : 0;
                     const newFbUser = await FbUserModel.create({
                         psId,
-                        fullName: updatedUserData?.fullName,
-                        bloodGroup: updatedUserData?.bloodGroup,
-                        divisionId: updatedUserData?.divisionId,
-                        districtId: updatedUserData?.districtId,
-                        thanaId: updatedUserData?.thanaId,
+                        fullName:    updatedUserData?.fullName,
+                        phoneNumber: updatedUserData?.phoneNumber ?? "",
+                        bloodGroup:  updatedUserData?.bloodGroup,
+                        divisionId:  updatedUserData?.divisionId,
+                        districtId:  updatedUserData?.districtId,
+                        thanaId:     updatedUserData?.thanaId,
                         latitude,
                         longitude,
                         location: {

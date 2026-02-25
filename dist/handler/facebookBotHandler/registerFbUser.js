@@ -41,6 +41,13 @@ const address_1 = require("./address");
 const quickReply_1 = __importDefault(require("./quickReply"));
 const fbUserSchema_1 = __importDefault(require("../../models/user/fbUserSchema"));
 const sendMessageToFbUser_1 = __importStar(require("./sendMessageToFbUser"));
+// Validate Bangladeshi mobile numbers
+function isValidBDPhone(phone) {
+    return /^(?:\+?88)?01[3-9]\d{8}$/.test(phone.trim());
+}
+function normalizeBDPhone(phone) {
+    return phone.trim().replace(/^\+?88/, "");
+}
 const getUserProfile = async (psId) => {
     try {
         const response = await axios_1.default.get(`https://graph.facebook.com/${psId}?fields=first_name,last_name&access_token=${process.env.PAGE_ACCESS_TOKEN}`);
@@ -60,6 +67,7 @@ const getUserProfile = async (psId) => {
     }
 };
 const registerFbUser = async (psId, received_text, received_postback, quickReplyType) => {
+    var _a;
     try {
         console.log("Register FB User:", { psId, received_text, received_postback, quickReplyType });
         const fbUser = await fbUserSchema_1.default.findOne({ psId });
@@ -93,10 +101,30 @@ const registerFbUser = async (psId, received_text, received_postback, quickReply
             address_1.userAdressMap.set(psId, {
                 ...userData,
                 fullName: profile.fullName,
-                flowType: "register"
+                flowType: "register",
+                awaitingPhone: true,
             });
-            // Send welcome message
-            await (0, quickReply_1.default)(psId, `ধন্যবাদ ${profile.firstName}! রেজিস্ট্রেশন শুরু করুন। আপনার রক্তের গ্রুপ নির্বাচন করুন:`, ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], "bloodGroup");
+            // Ask for phone number first
+            await (0, sendMessageToFbUser_1.default)(psId, `ধন্যবাদ ${profile.firstName}! রেজিস্ট্রেশন শুরু করুন।\n\n` +
+                `আপনার মোবাইল নম্বর লিখুন (যেমন: 01712345678):`);
+            return;
+        }
+        // Handle phone number input
+        if (userData.awaitingPhone) {
+            const phone = (received_text === null || received_text === void 0 ? void 0 : received_text.trim()) || "";
+            if (!isValidBDPhone(phone)) {
+                await (0, sendMessageToFbUser_1.default)(psId, "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
+                    "নম্বর অবশ্যই 01 দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
+                    "(যেমন: 01712345678)");
+                return;
+            }
+            address_1.userAdressMap.set(psId, {
+                ...userData,
+                phoneNumber: normalizeBDPhone(phone),
+                awaitingPhone: false,
+                flowType: "register",
+            });
+            await (0, quickReply_1.default)(psId, `✅ মোবাইল নম্বর সংরক্ষিত হয়েছে।\n\nএখন আপনার রক্তের গ্রুপ নির্বাচন করুন:`, ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], "bloodGroup");
             return;
         }
         // Handle blood group selection
@@ -152,7 +180,7 @@ const registerFbUser = async (psId, received_text, received_postback, quickReply
             });
             // Show confirmation with all collected data
             const updatedUserData = address_1.userAdressMap.get(psId);
-            await (0, sendMessageToFbUser_1.default)(psId, `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.fullName}\nরক্তের গ্রুপ: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.bloodGroup}\nবিভাগ: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.divisionId}\nজেলা: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.districtId}\nথানা: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.thanaId}`);
+            await (0, sendMessageToFbUser_1.default)(psId, `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.fullName}\nমোবাইল: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.phoneNumber}\nরক্তের গ্রুপ: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.bloodGroup}\nবিভাগ: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.divisionId}\nজেলা: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.districtId}\nথানা: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.thanaId}`);
             await (0, quickReply_1.default)(psId, `রেজিস্ট্রেশন সম্পন্ন! আপনার তথ্য:\nনাম: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.fullName}\nরক্তের গ্রুপ: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.bloodGroup}\nবিভাগ: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.divisionId}\nজেলা: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.districtId}\nথানা: ${updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.thanaId}`, ["ঠিক আছে", "তথ্য পরিবর্তন করুন"], "registerComplete");
             return;
         }
@@ -176,6 +204,7 @@ const registerFbUser = async (psId, received_text, received_postback, quickReply
                     const newFbUser = await fbUserSchema_1.default.create({
                         psId,
                         fullName: updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.fullName,
+                        phoneNumber: (_a = updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.phoneNumber) !== null && _a !== void 0 ? _a : "",
                         bloodGroup: updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.bloodGroup,
                         divisionId: updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.divisionId,
                         districtId: updatedUserData === null || updatedUserData === void 0 ? void 0 : updatedUserData.districtId,

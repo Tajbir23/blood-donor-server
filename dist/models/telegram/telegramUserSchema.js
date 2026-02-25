@@ -43,6 +43,7 @@ const TelegramUserSchema = new mongoose_1.Schema({
     username: { type: String, default: null },
     firstName: { type: String, default: null },
     fullName: { type: String, required: true },
+    phoneNumber: { type: String, required: true, default: "" },
     bloodGroup: { type: String, required: true },
     divisionId: { type: String, required: true },
     districtId: { type: String, required: true },

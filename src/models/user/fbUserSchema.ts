@@ -11,6 +11,11 @@ const fbUserSchema = new Schema<FbUserType>({
         type: String,
         required: true
     },
+    phoneNumber: {
+        type: String,
+        required: true,
+        default: ""
+    },
     bloodGroup: {
         type: String,
         required: true

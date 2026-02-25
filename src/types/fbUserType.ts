@@ -1,6 +1,7 @@
 interface FbUserType {
     psId: string;
     fullName: string;
+    phoneNumber: string;
     bloodGroup: string;
     divisionId: string;
     districtId: string;

@@ -11,13 +11,14 @@ import TelegramUserModel from "../../models/telegram/telegramUserSchema";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
-type RegStep = "name" | "blood_group" | "division" | "district" | "thana" | "confirm";
+type RegStep = "name" | "phone" | "blood_group" | "division" | "district" | "thana" | "confirm";
 
 interface TgRegisterState {
     step: RegStep;
     username?: string;
     firstName?: string;
     fullName?: string;
+    phoneNumber?: string;
     bloodGroup?: string;
     divisionId?: string;
     divisionName?: string;
@@ -42,6 +43,17 @@ function chunkRows<T>(arr: T[], size: number): T[][] {
         rows.push(arr.slice(i, i + size));
     }
     return rows;
+}
+
+// Validate Bangladeshi mobile numbers: 01XXXXXXXXX / +8801XXXXXXXXX / 8801XXXXXXXXX
+function isValidBDPhone(phone: string): boolean {
+    return /^(?:\+?88)?01[3-9]\d{8}$/.test(phone.trim());
+}
+
+// Normalise to 01XXXXXXXXX
+function normalizeBDPhone(phone: string): string {
+    const digits = phone.trim().replace(/^\+?88/, "");
+    return digits;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -93,12 +105,36 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
             return true;
         }
         state.fullName = name;
+        state.step = "phone";
+        tgRegisterMap.set(chatId, state);
+
+        await sendTgMessage(
+            chatId,
+            `✅ ধন্যবাদ <b>${name}</b>!\n\n` +
+            `এখন আপনার <b>মোবাইল নম্বর</b> লিখুন:\n` +
+            `(যেমন: <code>01XXXXXXXXX</code>)`
+        );
+        return true;
+    }
+
+    if (state.step === "phone") {
+        const phone = text.trim();
+        if (!isValidBDPhone(phone)) {
+            await sendTgMessage(
+                chatId,
+                "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
+                "নম্বর অবশ্যই <code>01</code> দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
+                "(যেমন: <code>01712345678</code>)"
+            );
+            return true;
+        }
+        state.phoneNumber = normalizeBDPhone(phone);
         state.step = "blood_group";
         tgRegisterMap.set(chatId, state);
 
         await sendTgInlineKeyboardData(
             chatId,
-            `✅ ধন্যবাদ <b>${name}</b>!\n\nএখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`,
+            `✅ মোবাইল: <b>${state.phoneNumber}</b>\n\nএখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`,
             [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row =>
                 row.map(bg => ({ label: bg, data: `REG_BG:${bg}` }))
             )
@@ -198,6 +234,7 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
         const summary =
             `📋 <b>আপনার তথ্য:</b>\n\n` +
             `👤 নাম: <b>${state.fullName}</b>\n` +
+            `📱 মোবাইল: <b>${state.phoneNumber}</b>\n` +
             `🩸 রক্তের গ্রুপ: <b>${state.bloodGroup}</b>\n` +
             `📍 বিভাগ: <b>${state.divisionName}</b>\n` +
             `🏙️ জেলা: <b>${state.districtName}</b>\n` +
@@ -217,8 +254,9 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
             const existing = await TelegramUserModel.findOne({ chatId });
             if (existing) {
                 // Update existing record
-                existing.fullName   = state.fullName!;
-                existing.bloodGroup = state.bloodGroup!;
+                existing.fullName    = state.fullName!;
+                existing.phoneNumber  = state.phoneNumber!;
+                existing.bloodGroup  = state.bloodGroup!;
                 existing.divisionId = state.divisionId!;
                 existing.districtId = state.districtId!;
                 existing.thanaId    = state.thanaId!;
@@ -231,15 +269,16 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
             } else {
                 await TelegramUserModel.create({
                     chatId,
-                    username:   state.username   ?? null,
-                    firstName:  state.firstName  ?? null,
-                    fullName:   state.fullName!,
-                    bloodGroup: state.bloodGroup!,
-                    divisionId: state.divisionId!,
-                    districtId: state.districtId!,
-                    thanaId:    state.thanaId!,
-                    latitude:   state.latitude!,
-                    longitude:  state.longitude!,
+                    username:    state.username    ?? null,
+                    firstName:   state.firstName   ?? null,
+                    fullName:    state.fullName!,
+                    phoneNumber: state.phoneNumber!,
+                    bloodGroup:  state.bloodGroup!,
+                    divisionId:  state.divisionId!,
+                    districtId:  state.districtId!,
+                    thanaId:     state.thanaId!,
+                    latitude:    state.latitude!,
+                    longitude:   state.longitude!,
                     location: {
                         type: "Point",
                         coordinates: [state.longitude!, state.latitude!],

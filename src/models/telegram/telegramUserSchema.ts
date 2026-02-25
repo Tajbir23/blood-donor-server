@@ -5,6 +5,7 @@ export interface ITelegramUser extends Document {
     username?: string;
     firstName?: string;
     fullName: string;
+    phoneNumber: string;
     bloodGroup: string;
     divisionId: string;
     districtId: string;
@@ -34,6 +35,7 @@ const TelegramUserSchema = new Schema<ITelegramUser>(
         username:   { type: String, default: null },
         firstName:  { type: String, default: null },
         fullName:   { type: String, required: true },
+        phoneNumber: { type: String, required: true, default: "" },
         bloodGroup: { type: String, required: true },
         divisionId: { type: String, required: true },
         districtId: { type: String, required: true },

@@ -28,6 +28,15 @@ function chunkRows(arr, size) {
     }
     return rows;
 }
+// Validate Bangladeshi mobile numbers: 01XXXXXXXXX / +8801XXXXXXXXX / 8801XXXXXXXXX
+function isValidBDPhone(phone) {
+    return /^(?:\+?88)?01[3-9]\d{8}$/.test(phone.trim());
+}
+// Normalise to 01XXXXXXXXX
+function normalizeBDPhone(phone) {
+    const digits = phone.trim().replace(/^\+?88/, "");
+    return digits;
+}
 // ── Public API ────────────────────────────────────────────────────────────────
 function isInTgRegistration(chatId) {
     const s = tgRegisterMap.get(chatId);
@@ -66,9 +75,25 @@ async function handleTgRegisterText(chatId, text) {
             return true;
         }
         state.fullName = name;
+        state.step = "phone";
+        tgRegisterMap.set(chatId, state);
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `✅ ধন্যবাদ <b>${name}</b>!\n\n` +
+            `এখন আপনার <b>মোবাইল নম্বর</b> লিখুন:\n` +
+            `(যেমন: <code>01XXXXXXXXX</code>)`);
+        return true;
+    }
+    if (state.step === "phone") {
+        const phone = text.trim();
+        if (!isValidBDPhone(phone)) {
+            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
+                "নম্বর অবশ্যই <code>01</code> দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
+                "(যেমন: <code>01712345678</code>)");
+            return true;
+        }
+        state.phoneNumber = normalizeBDPhone(phone);
         state.step = "blood_group";
         tgRegisterMap.set(chatId, state);
-        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ ধন্যবাদ <b>${name}</b>!\n\nএখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`, [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row => row.map(bg => ({ label: bg, data: `REG_BG:${bg}` }))));
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ মোবাইল: <b>${state.phoneNumber}</b>\n\nএখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`, [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row => row.map(bg => ({ label: bg, data: `REG_BG:${bg}` }))));
         return true;
     }
     // If user types text when a keyboard choice is expected, remind them
@@ -146,6 +171,7 @@ async function handleTgRegisterCallback(chatId, data) {
         tgRegisterMap.set(chatId, state);
         const summary = `📋 <b>আপনার তথ্য:</b>\n\n` +
             `👤 নাম: <b>${state.fullName}</b>\n` +
+            `📱 মোবাইল: <b>${state.phoneNumber}</b>\n` +
             `🩸 রক্তের গ্রুপ: <b>${state.bloodGroup}</b>\n` +
             `📍 বিভাগ: <b>${state.divisionName}</b>\n` +
             `🏙️ জেলা: <b>${state.districtName}</b>\n` +
@@ -164,6 +190,7 @@ async function handleTgRegisterCallback(chatId, data) {
             if (existing) {
                 // Update existing record
                 existing.fullName = state.fullName;
+                existing.phoneNumber = state.phoneNumber;
                 existing.bloodGroup = state.bloodGroup;
                 existing.divisionId = state.divisionId;
                 existing.districtId = state.districtId;
@@ -183,6 +210,7 @@ async function handleTgRegisterCallback(chatId, data) {
                     username: (_a = state.username) !== null && _a !== void 0 ? _a : null,
                     firstName: (_b = state.firstName) !== null && _b !== void 0 ? _b : null,
                     fullName: state.fullName,
+                    phoneNumber: state.phoneNumber,
                     bloodGroup: state.bloodGroup,
                     divisionId: state.divisionId,
                     districtId: state.districtId,

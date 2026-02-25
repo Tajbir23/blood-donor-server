@@ -6,8 +6,10 @@ interface UserAddressData {
     thanaId?: string;
     latitude?: string;
     longitude?: string;
+    phoneNumber?: string;
     bloodGroup?: string;
     fullName?: string;
+    awaitingPhone?: boolean;
     flowType?: "register" | "findBlood";
 }
 
