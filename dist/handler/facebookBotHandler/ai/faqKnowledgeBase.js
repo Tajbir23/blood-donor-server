@@ -5,9 +5,45 @@
  * Answers are in Bengali (Bangla) with key English terms where useful.
  * Matched via keyword scoring – no external API required.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.faqEntries = void 0;
+exports.saveCustomFaqEntries = saveCustomFaqEntries;
 exports.findFaqAnswer = findFaqAnswer;
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 exports.faqEntries = [
     // ── বয়স ও ওজন ────────────────────────────────────────────────────────────
     {
@@ -145,19 +181,50 @@ exports.faqEntries = [
         quickReplies: ["Find Blood", "Register"],
     },
 ];
+// ── Custom FAQ entries (admin-added via training panel) ───────────────────────
+const CUSTOM_FAQ_PATH = path.join(process.cwd(), "ai-model", "custom_faq.json");
+function loadCustomFaqEntries() {
+    try {
+        if (!fs.existsSync(CUSTOM_FAQ_PATH))
+            return [];
+        return JSON.parse(fs.readFileSync(CUSTOM_FAQ_PATH, "utf-8"));
+    }
+    catch (_a) {
+        return [];
+    }
+}
+/** Save custom FAQ list to disk (called by admin API controllers). */
+function saveCustomFaqEntries(entries) {
+    const dir = path.dirname(CUSTOM_FAQ_PATH);
+    if (!fs.existsSync(dir))
+        fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CUSTOM_FAQ_PATH, JSON.stringify(entries, null, 2));
+}
 /**
  * Find the best matching FAQ entry for a given message.
  * Returns the entry with the highest keyword overlap score.
+ * Custom (admin-added) entries are always checked first via substring match on the original question.
  */
 function findFaqAnswer(text) {
     const lower = text.toLowerCase().normalize("NFC");
+    // ── 1. Check custom admin-added entries first (exact/partial question match) ──
+    const customEntries = loadCustomFaqEntries();
+    for (const custom of customEntries) {
+        const qLower = custom.questionText.toLowerCase().normalize("NFC");
+        // Check if query contains most words of the stored question (≥60% overlap)
+        const qTokens = qLower.split(/\s+/).filter(t => t.length > 1);
+        const matches = qTokens.filter(t => lower.includes(t)).length;
+        if (qTokens.length > 0 && matches / qTokens.length >= 0.5) {
+            return { keywords: qTokens, answer: custom.answerText };
+        }
+    }
+    // ── 2. Static FAQ keyword matching ────────────────────────────────────────
     let bestEntry = null;
     let bestScore = 0;
     for (const entry of exports.faqEntries) {
         let score = 0;
         for (const keyword of entry.keywords) {
             if (lower.includes(keyword.toLowerCase())) {
-                // Longer keyword matches score higher
                 score += keyword.length;
             }
         }
@@ -166,6 +233,5 @@ function findFaqAnswer(text) {
             bestEntry = entry;
         }
     }
-    // Require at least one meaningful keyword to match
     return bestScore >= 2 ? bestEntry : null;
 }

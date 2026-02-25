@@ -19,6 +19,9 @@ const deleteSlider_1 = __importDefault(require("../../../controller/administrato
 const toggleActive_1 = __importDefault(require("../../../controller/administrator/system/dashboard/slider/toggleActive"));
 const getFacebookMessages_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getFacebookMessages"));
 const getTelegramMessages_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getTelegramMessages"));
+const addAiTrainingData_1 = __importDefault(require("../../../controller/administrator/system/dashboard/ai/addAiTrainingData"));
+const getAiTrainingData_1 = __importDefault(require("../../../controller/administrator/system/dashboard/ai/getAiTrainingData"));
+const deleteAiTrainingData_1 = __importDefault(require("../../../controller/administrator/system/dashboard/ai/deleteAiTrainingData"));
 const verifyIsSuperAdmin_1 = __importDefault(require("../../../handler/validation/verifyIsSuperAdmin"));
 const systemDashboardRoute = (0, express_1.Router)();
 const sliderUpload = (0, imageUpload_1.createImageUpload)('sliderImage', {
@@ -39,4 +42,8 @@ systemDashboardRoute.delete('/delete-slider', verifyJwt_1.default, verifyIsAdmin
 systemDashboardRoute.put('/slider-active-toggle', verifyJwt_1.default, verifyIsAdmin_1.default, toggleActive_1.default);
 systemDashboardRoute.get('/facebook-messages', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getFacebookMessages_1.default);
 systemDashboardRoute.get('/telegram-messages', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getTelegramMessages_1.default);
+// AI Training routes (superAdmin only)
+systemDashboardRoute.get('/ai-training', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getAiTrainingData_1.default);
+systemDashboardRoute.post('/ai-training', verifyJwt_1.default, verifyIsSuperAdmin_1.default, addAiTrainingData_1.default);
+systemDashboardRoute.delete('/ai-training/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, deleteAiTrainingData_1.default);
 exports.default = systemDashboardRoute;

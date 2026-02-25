@@ -19,7 +19,7 @@ export function tokenize(text: string): string[] {
 }
 
 /** Build vocabulary from all training samples, or restore from a saved array */
-export function buildVocabulary(savedVocab?: string[]): void {
+export function buildVocabulary(savedVocab?: string[], extraTexts?: string[]): void {
     if (savedVocab && savedVocab.length > 0) {
         vocabulary = savedVocab;
         console.log(`[AI] Vocabulary restored from disk: ${vocabulary.length} tokens`);
@@ -29,6 +29,14 @@ export function buildVocabulary(savedVocab?: string[]): void {
     for (const sample of trainingData) {
         for (const token of tokenize(sample.text)) {
             wordSet.add(token);
+        }
+    }
+    // Include extra admin-added training texts
+    if (extraTexts) {
+        for (const text of extraTexts) {
+            for (const token of tokenize(text)) {
+                wordSet.add(token);
+            }
         }
     }
     vocabulary = Array.from(wordSet).sort();

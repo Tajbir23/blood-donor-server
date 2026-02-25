@@ -40,9 +40,12 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.loadExtraTrainingSamples = loadExtraTrainingSamples;
+exports.saveExtraTrainingSamples = saveExtraTrainingSamples;
 exports.trainIntentModel = trainIntentModel;
 exports.predictIntent = predictIntent;
 exports.isModelReady = isModelReady;
+exports.retrainModel = retrainModel;
 const tf = __importStar(require("@tensorflow/tfjs"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
@@ -50,6 +53,25 @@ const trainingData_1 = require("./trainingData");
 const textPreprocessor_1 = require("./textPreprocessor");
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const MODEL_DIR = path.join(process.cwd(), "ai-model");
+const EXTRA_TRAINING_PATH = path.join(MODEL_DIR, "extra_training.json");
+// ── Load extra (admin-added) training samples from disk ───────────────────────
+function loadExtraTrainingSamples() {
+    try {
+        if (!fs.existsSync(EXTRA_TRAINING_PATH))
+            return [];
+        const raw = fs.readFileSync(EXTRA_TRAINING_PATH, "utf-8");
+        return JSON.parse(raw);
+    }
+    catch (_a) {
+        return [];
+    }
+}
+/** Save extra training samples to disk (called by admin API controllers). */
+function saveExtraTrainingSamples(samples) {
+    if (!fs.existsSync(MODEL_DIR))
+        fs.mkdirSync(MODEL_DIR, { recursive: true });
+    fs.writeFileSync(EXTRA_TRAINING_PATH, JSON.stringify(samples, null, 2));
+}
 // ── Model singleton ───────────────────────────────────────────────────────────
 let model = null;
 let isTraining = false;
@@ -159,10 +181,12 @@ async function trainIntentModel() {
     }
     try {
         console.log("[AI] Building vocabulary …");
-        (0, textPreprocessor_1.buildVocabulary)();
+        const extraSamples = loadExtraTrainingSamples();
+        const allTrainingSamples = [...trainingData_1.trainingData, ...extraSamples];
+        (0, textPreprocessor_1.buildVocabulary)(undefined, allTrainingSamples.map(s => s.text));
         const vocab = (0, textPreprocessor_1.getVocabulary)();
         console.log("[AI] Preparing training tensors …");
-        const shuffled = trainingData_1.trainingData
+        const shuffled = allTrainingSamples
             .map((s, i) => ({ x: (0, textPreprocessor_1.textToVector)(s.text), y: (0, textPreprocessor_1.intentToOneHot)(s.intent) }))
             .sort(() => Math.random() - 0.5);
         const xTensor = tf.tensor2d(shuffled.map(a => a.x));
@@ -258,4 +282,22 @@ function keywordFallback(text) {
 }
 function isModelReady() {
     return isTrained;
+}
+/**
+ * Force a full retrain from scratch (called after admin adds/removes training data).
+ * Deletes the cached model artifact so the next trainIntentModel() retrains from data.
+ */
+async function retrainModel() {
+    // Delete cached artifact so training runs fresh
+    try {
+        if (fs.existsSync(ARTIFACT_PATH))
+            fs.unlinkSync(ARTIFACT_PATH);
+    }
+    catch ( /* ignore */_a) { /* ignore */ }
+    // Reset model state
+    model = null;
+    isTrained = false;
+    isTraining = false;
+    console.log("[AI] Cache cleared – starting retrain …");
+    await trainIntentModel();
 }

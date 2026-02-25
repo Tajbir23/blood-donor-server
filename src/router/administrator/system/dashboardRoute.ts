@@ -14,6 +14,9 @@ import deleteSlider from "../../../controller/administrator/system/dashboard/sli
 import toggleActive from "../../../controller/administrator/system/dashboard/slider/toggleActive";
 import getFacebookMessages from "../../../controller/administrator/system/dashboard/getFacebookMessages";
 import getTelegramMessages from "../../../controller/administrator/system/dashboard/getTelegramMessages";
+import addAiTrainingData from "../../../controller/administrator/system/dashboard/ai/addAiTrainingData";
+import getAiTrainingData from "../../../controller/administrator/system/dashboard/ai/getAiTrainingData";
+import deleteAiTrainingData from "../../../controller/administrator/system/dashboard/ai/deleteAiTrainingData";
 import verifyIsSuperAdmin from "../../../handler/validation/verifyIsSuperAdmin";
 
 const systemDashboardRoute = Router();
@@ -38,5 +41,10 @@ systemDashboardRoute.delete('/delete-slider', verifyJwt, verifyIsAdmin, deleteSl
 systemDashboardRoute.put('/slider-active-toggle', verifyJwt, verifyIsAdmin, toggleActive)
 systemDashboardRoute.get('/facebook-messages', verifyJwt, verifyIsSuperAdmin, getFacebookMessages)
 systemDashboardRoute.get('/telegram-messages', verifyJwt, verifyIsSuperAdmin, getTelegramMessages)
+
+// AI Training routes (superAdmin only)
+systemDashboardRoute.get('/ai-training',          verifyJwt, verifyIsSuperAdmin, getAiTrainingData)
+systemDashboardRoute.post('/ai-training',         verifyJwt, verifyIsSuperAdmin, addAiTrainingData)
+systemDashboardRoute.delete('/ai-training/:id',   verifyJwt, verifyIsSuperAdmin, deleteAiTrainingData)
 
 export default systemDashboardRoute;

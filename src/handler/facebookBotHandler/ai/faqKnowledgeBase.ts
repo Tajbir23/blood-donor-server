@@ -5,6 +5,9 @@
  * Matched via keyword scoring – no external API required.
  */
 
+import * as fs from "fs";
+import * as path from "path";
+
 export interface FaqEntry {
     /** Keywords to match (lowercase, Bengali + English) */
     keywords: string[];
@@ -162,13 +165,51 @@ export const faqEntries: FaqEntry[] = [
     },
 ];
 
+// ── Custom FAQ entries (admin-added via training panel) ───────────────────────
+const CUSTOM_FAQ_PATH = path.join(process.cwd(), "ai-model", "custom_faq.json");
+
+interface CustomFaqEntry {
+    questionText: string;
+    answerText: string;
+}
+
+function loadCustomFaqEntries(): CustomFaqEntry[] {
+    try {
+        if (!fs.existsSync(CUSTOM_FAQ_PATH)) return [];
+        return JSON.parse(fs.readFileSync(CUSTOM_FAQ_PATH, "utf-8")) as CustomFaqEntry[];
+    } catch {
+        return [];
+    }
+}
+
+/** Save custom FAQ list to disk (called by admin API controllers). */
+export function saveCustomFaqEntries(entries: CustomFaqEntry[]): void {
+    const dir = path.dirname(CUSTOM_FAQ_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CUSTOM_FAQ_PATH, JSON.stringify(entries, null, 2));
+}
+
 /**
  * Find the best matching FAQ entry for a given message.
  * Returns the entry with the highest keyword overlap score.
+ * Custom (admin-added) entries are always checked first via substring match on the original question.
  */
 export function findFaqAnswer(text: string): FaqEntry | null {
     const lower = text.toLowerCase().normalize("NFC");
 
+    // ── 1. Check custom admin-added entries first (exact/partial question match) ──
+    const customEntries = loadCustomFaqEntries();
+    for (const custom of customEntries) {
+        const qLower = custom.questionText.toLowerCase().normalize("NFC");
+        // Check if query contains most words of the stored question (≥60% overlap)
+        const qTokens = qLower.split(/\s+/).filter(t => t.length > 1);
+        const matches = qTokens.filter(t => lower.includes(t)).length;
+        if (qTokens.length > 0 && matches / qTokens.length >= 0.5) {
+            return { keywords: qTokens, answer: custom.answerText };
+        }
+    }
+
+    // ── 2. Static FAQ keyword matching ────────────────────────────────────────
     let bestEntry: FaqEntry | null = null;
     let bestScore = 0;
 
@@ -176,7 +217,6 @@ export function findFaqAnswer(text: string): FaqEntry | null {
         let score = 0;
         for (const keyword of entry.keywords) {
             if (lower.includes(keyword.toLowerCase())) {
-                // Longer keyword matches score higher
                 score += keyword.length;
             }
         }
@@ -186,6 +226,5 @@ export function findFaqAnswer(text: string): FaqEntry | null {
         }
     }
 
-    // Require at least one meaningful keyword to match
     return bestScore >= 2 ? bestEntry : null;
 }

@@ -24,7 +24,7 @@ function tokenize(text) {
         .filter(t => t.length > 0);
 }
 /** Build vocabulary from all training samples, or restore from a saved array */
-function buildVocabulary(savedVocab) {
+function buildVocabulary(savedVocab, extraTexts) {
     if (savedVocab && savedVocab.length > 0) {
         vocabulary = savedVocab;
         console.log(`[AI] Vocabulary restored from disk: ${vocabulary.length} tokens`);
@@ -34,6 +34,14 @@ function buildVocabulary(savedVocab) {
     for (const sample of trainingData_1.trainingData) {
         for (const token of tokenize(sample.text)) {
             wordSet.add(token);
+        }
+    }
+    // Include extra admin-added training texts
+    if (extraTexts) {
+        for (const text of extraTexts) {
+            for (const token of tokenize(text)) {
+                wordSet.add(token);
+            }
         }
     }
     vocabulary = Array.from(wordSet).sort();

@@ -21,6 +21,24 @@ import {
 
 // ── Paths ─────────────────────────────────────────────────────────────────────
 const MODEL_DIR = path.join(process.cwd(), "ai-model");
+const EXTRA_TRAINING_PATH = path.join(MODEL_DIR, "extra_training.json");
+
+// ── Load extra (admin-added) training samples from disk ───────────────────────
+export function loadExtraTrainingSamples(): { text: string; intent: Intent }[] {
+    try {
+        if (!fs.existsSync(EXTRA_TRAINING_PATH)) return [];
+        const raw = fs.readFileSync(EXTRA_TRAINING_PATH, "utf-8");
+        return JSON.parse(raw) as { text: string; intent: Intent }[];
+    } catch {
+        return [];
+    }
+}
+
+/** Save extra training samples to disk (called by admin API controllers). */
+export function saveExtraTrainingSamples(samples: { text: string; intent: Intent }[]): void {
+    if (!fs.existsSync(MODEL_DIR)) fs.mkdirSync(MODEL_DIR, { recursive: true });
+    fs.writeFileSync(EXTRA_TRAINING_PATH, JSON.stringify(samples, null, 2));
+}
 
 // ── Model singleton ───────────────────────────────────────────────────────────
 let model: tf.LayersModel | null = null;
@@ -155,11 +173,13 @@ export async function trainIntentModel(): Promise<void> {
 
     try {
         console.log("[AI] Building vocabulary …");
-        buildVocabulary();
+        const extraSamples = loadExtraTrainingSamples();
+        const allTrainingSamples = [...trainingData, ...extraSamples];
+        buildVocabulary(undefined, allTrainingSamples.map(s => s.text));
         const vocab = getVocabulary();
 
         console.log("[AI] Preparing training tensors …");
-        const shuffled = trainingData
+        const shuffled = allTrainingSamples
             .map((s, i) => ({ x: textToVector(s.text), y: intentToOneHot(s.intent) }))
             .sort(() => Math.random() - 0.5);
 
@@ -278,4 +298,23 @@ function keywordFallback(text: string): Prediction {
 
 export function isModelReady(): boolean {
     return isTrained;
+}
+
+/**
+ * Force a full retrain from scratch (called after admin adds/removes training data).
+ * Deletes the cached model artifact so the next trainIntentModel() retrains from data.
+ */
+export async function retrainModel(): Promise<void> {
+    // Delete cached artifact so training runs fresh
+    try {
+        if (fs.existsSync(ARTIFACT_PATH)) fs.unlinkSync(ARTIFACT_PATH);
+    } catch { /* ignore */ }
+
+    // Reset model state
+    model     = null;
+    isTrained = false;
+    isTraining = false;
+
+    console.log("[AI] Cache cleared – starting retrain …");
+    await trainIntentModel();
 }
