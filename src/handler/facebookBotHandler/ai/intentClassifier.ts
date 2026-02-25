@@ -9,6 +9,7 @@
 import * as tf from "@tensorflow/tfjs";
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
 import { trainingData, INTENTS, Intent } from "./trainingData";
 import {
     buildVocabulary,
@@ -47,20 +48,40 @@ let isTrained  = false;
 
 const CONFIDENCE_THRESHOLD = 0.45;
 
+// ── Dynamic layer sizing based on available RAM ─────────────────────────────
+function getModelUnits(): { hidden1: number; hidden2: number } {
+    const freeMB = os.freemem() / 1024 / 1024;
+    if (freeMB >= 2048) {
+        // ≥ 2 GB free  → large
+        console.log(`[AI] RAM: ${freeMB.toFixed(0)} MB free → using large units (128/64)`);
+        return { hidden1: 128, hidden2: 64 };
+    } else if (freeMB >= 512) {
+        // 512 MB – 2 GB → medium (default)
+        console.log(`[AI] RAM: ${freeMB.toFixed(0)} MB free → using medium units (64/32)`);
+        return { hidden1: 64, hidden2: 32 };
+    } else {
+        // < 512 MB      → compact
+        console.log(`[AI] RAM: ${freeMB.toFixed(0)} MB free → using compact units (32/16)`);
+        return { hidden1: 32, hidden2: 16 };
+    }
+}
+
 // ── Build compact model ───────────────────────────────────────────────────────
 function buildModel(inputSize: number): tf.LayersModel {
     const m = tf.sequential();
 
+    const { hidden1, hidden2 } = getModelUnits();
+
     m.add(tf.layers.dense({
         inputShape: [inputSize],
-        units: 64,                          // 128 → 64  (half the RAM)
+        units: hidden1,
         activation: "relu",
         kernelInitializer: "glorotUniform",
     }));
     m.add(tf.layers.dropout({ rate: 0.3 }));
 
     m.add(tf.layers.dense({
-        units: 32,                          // 64 → 32
+        units: hidden2,
         activation: "relu",
     }));
     m.add(tf.layers.dropout({ rate: 0.2 }));
