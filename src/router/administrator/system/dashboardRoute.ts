@@ -13,6 +13,7 @@ import getAllSliders from "../../../controller/administrator/system/dashboard/sl
 import deleteSlider from "../../../controller/administrator/system/dashboard/slider/deleteSlider";
 import toggleActive from "../../../controller/administrator/system/dashboard/slider/toggleActive";
 import getFacebookMessages from "../../../controller/administrator/system/dashboard/getFacebookMessages";
+import getTelegramMessages from "../../../controller/administrator/system/dashboard/getTelegramMessages";
 import verifyIsSuperAdmin from "../../../handler/validation/verifyIsSuperAdmin";
 
 const systemDashboardRoute = Router();
@@ -36,5 +37,6 @@ systemDashboardRoute.get('/get-all-sliders', verifyJwt, verifyIsAdmin, getAllSli
 systemDashboardRoute.delete('/delete-slider', verifyJwt, verifyIsAdmin, deleteSlider)
 systemDashboardRoute.put('/slider-active-toggle', verifyJwt, verifyIsAdmin, toggleActive)
 systemDashboardRoute.get('/facebook-messages', verifyJwt, verifyIsSuperAdmin, getFacebookMessages)
+systemDashboardRoute.get('/telegram-messages', verifyJwt, verifyIsSuperAdmin, getTelegramMessages)
 
 export default systemDashboardRoute;

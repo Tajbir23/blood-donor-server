@@ -14,6 +14,8 @@ import scheduleDonationReminder from './cron/donationReminder'
 import morgan from 'morgan'
 import path from 'path'
 import FacebookBotRouter from './router/facebook_bot/facebook_bot_Router'
+import TelegramBotRouter from './router/telegram_bot/telegram_bot_Router'
+import { setTelegramWebhook } from './handler/telegramBotHandler/sendMessageToTgUser'
 import setupGetStartedButton from './handler/facebookBotHandler/setUpGetStartedButton'
 import setupPersistentMenu from './handler/facebookBotHandler/setUpPersistantMenu'
 import { verifyEmailConfig } from './controller/email/sendEmail'
@@ -126,6 +128,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use('/webhook', FacebookBotRouter)
+app.use('/telegram-webhook', TelegramBotRouter)
 export let activeUsers: string[] = []
 
 app.listen(PORT, async() => {
@@ -147,4 +150,14 @@ app.listen(PORT, async() => {
     trainIntentModel()
         .then(() => console.log('[AI] Bot intent model ready ✓'))
         .catch(err => console.error('[AI] Model training failed:', err));
+
+    // Register Telegram webhook
+    const backendUrl = process.env.BACKEND_URL;
+    if (backendUrl && process.env.TELEGRAM_BOT_TOKEN) {
+        setTelegramWebhook(`${backendUrl}/telegram-webhook`)
+            .then(() => console.log('[TG] Webhook registered ✓'))
+            .catch(err => console.error('[TG] Webhook registration failed:', err));
+    } else {
+        console.warn('[TG] BACKEND_URL or TELEGRAM_BOT_TOKEN missing – webhook not set');
+    }
 })
