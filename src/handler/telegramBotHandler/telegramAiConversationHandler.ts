@@ -6,6 +6,22 @@
  */
 
 import { predictIntent } from "../facebookBotHandler/ai/intentClassifier";
+import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
+
+/** Build a display label for a location entity showing parent context */
+function buildLocationLabel(entity: LocationEntity): string {
+    if (entity.type === "thana" && entity.districtId) {
+        for (const div of bangladeshGeoData.divisions) {
+            const dist = div.districts.find(d => d.id === entity.districtId);
+            if (dist) return `${entity.name}  ·  ${dist.name}`;
+        }
+    }
+    if (entity.type === "district" && entity.divisionId) {
+        const div = bangladeshGeoData.divisions.find(d => d.id === entity.divisionId);
+        if (div) return `${entity.name}  ·  ${div.name}`;
+    }
+    return entity.name;
+}
 import {
     extractEntities,
     extractBloodGroup,
@@ -222,16 +238,16 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 return true;
             } else {
                 // Exact match failed → fuzzy suggestions as inline buttons
-                const suggestions = suggestLocations(text, 5);
+                const suggestions = suggestLocations(text, 6);
                 if (suggestions.length > 0) {
-                    const rows = suggestions.map(s => [{ label: `📍 ${s.name}`, data: `LOC_SUGGEST:${s.id}` }]);
+                    const rows = suggestions.map(s => [{ label: `📍 ${buildLocationLabel(s)}`, data: `LOC_SUGGEST:${s.id}` }]);
                     await sendTgInlineKeyboardData(
                         chatId,
-                        "এলাকাটি সঠিকভাবে বোঝা যায়নি। এগুলোর মধ্যে কোনটি বোঝাতে চেয়েছেন?",
+                        "🔍 এলাকাটি সঠিকভাবে বোঝা যায়নি। নিচের কোনটি বোঝাতে চেয়েছেন?",
                         rows
                     );
                 } else {
-                    await sendTgMessage(chatId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে এলাকার নাম লিখুন (যেমন: ঢাকা, Mirpur, Chittagong):");
+                    await sendTgMessage(chatId, "এলাকার নাম বুঝতে পারিনি। আরো নির্দিষ্ট করে লিখুন\n(যেমন: মিরপুর-১০, গুলশান-১, chittagong, sylhet):");
                 }
                 return true;
             }

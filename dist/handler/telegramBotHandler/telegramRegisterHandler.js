@@ -18,6 +18,23 @@ const address_1 = require("../facebookBotHandler/address");
 const sendMessageToTgUser_1 = require("./sendMessageToTgUser");
 const telegramUserSchema_1 = __importDefault(require("../../models/telegram/telegramUserSchema"));
 const bangladeshGeoLoactionData_1 = require("../../utils/bangladeshGeoLoactionData");
+const entityExtractor_1 = require("../facebookBotHandler/ai/entityExtractor");
+/** Build label with parent context: "রাজারহাট  ·  গাজীপুর" */
+function buildLocLabel(entity) {
+    if (entity.type === "thana" && entity.districtId) {
+        for (const div of bangladeshGeoLoactionData_1.bangladeshGeoData.divisions) {
+            const dist = div.districts.find(d => d.id === entity.districtId);
+            if (dist)
+                return `${entity.name}  ·  ${dist.name}`;
+        }
+    }
+    if (entity.type === "district" && entity.divisionId) {
+        const div = bangladeshGeoLoactionData_1.bangladeshGeoData.divisions.find(d => d.id === entity.divisionId);
+        if (div)
+            return `${entity.name}  ·  ${div.name}`;
+    }
+    return entity.name;
+}
 const tgRegisterMap = new Map();
 const REG_TTL_MS = 20 * 60 * 1000; // 20 min
 const TOTAL_STEPS = 5; // name, phone, blood_group, location(div+dist+thana=1), confirm
@@ -165,6 +182,29 @@ async function handleTgRegisterText(chatId, text) {
             `এখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`, bgRows);
         return true;
     }
+    // ── loc_search: user typed an area → fuzzy suggest ───────────────────────
+    if (state.step === "loc_search") {
+        const query = text.trim();
+        if (isCancelText(query)) {
+            tgRegisterMap.delete(chatId);
+            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+            await showMainMenuReg(chatId);
+            return true;
+        }
+        const suggestions = (0, entityExtractor_1.suggestLocations)(query, 6).filter(s => s.type === "thana");
+        if (suggestions.length === 0) {
+            await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `❌ "<b>${query}</b>" এলাকাটি খুঁজে পাওয়া যায়নি।\n\nআরো নির্দিষ্ট নাম লিখুন (যেমন: মিরপুর, গুলশান, সদর):`, [
+                [{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }],
+                [CANCEL_BTN[0]],
+            ]);
+            return true;
+        }
+        const rows = suggestions.map(s => [{ label: `📍 ${buildLocLabel(s)}`, data: `REG_LOC_SUGGEST:${s.id}` }]);
+        rows.push([{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }]);
+        rows.push([CANCEL_BTN[0]]);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `🔍 "<b>${query}</b>" এর কাছাকাছি এলাকা:\nকোনটি আপনার এলাকা?`, rows);
+        return true;
+    }
     // If user types text when a keyboard choice is expected, remind them
     await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।", [[CANCEL_BTN[0]]]);
     return true;
@@ -183,6 +223,78 @@ async function handleTgRegisterCallback(chatId, data) {
         await showMainMenuReg(chatId);
         return true;
     }
+    // ── Switch to text-based location search ──────────────────────────────────
+    if (data === "REG_LOC_TEXT") {
+        state.step = "loc_search";
+        tgRegisterMap.set(chatId, state);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "🔍 <b>এলাকার নাম লিখুন</b>\n\nআপনার উপজেলা বা থানার নাম বাংলায় বা ইংরেজিতে লিখুন:\n(যেমন: মিরপুর, গুলশান, Dhanmondi, Uttara)", [[{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }], [CANCEL_BTN[0]]]);
+        return true;
+    }
+    // ── Go back to division list ───────────────────────────────────────────────
+    if (data === "REG_BACK_DIV") {
+        state.step = "division";
+        tgRegisterMap.set(chatId, state);
+        const divisions = await (0, address_1.getDivision)();
+        const divRows = chunkRows(divisions.map(d => ({ label: d.name, data: `REG_DIV:${d.id}` })), 3);
+        divRows.push([{ label: "🔍 এলাকার নাম লিখুন", data: "REG_LOC_TEXT" }]);
+        divRows.push([CANCEL_BTN[0]]);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `📍 ধাপ ৪/${TOTAL_STEPS}: এলাকা\n\nআপনার <b>বিভাগ</b> নির্বাচন করুন:`, divRows);
+        return true;
+    }
+    // ── Text-search location suggestion selected ──────────────────────────────
+    if (data.startsWith("REG_LOC_SUGGEST:")) {
+        const thanaId = data.slice(16);
+        // Find thana details from geo data
+        let foundThana = null;
+        let foundDistrictId = "";
+        let foundDistrictName = "";
+        let foundDivisionId = "";
+        let foundDivisionName = "";
+        for (const div of bangladeshGeoLoactionData_1.bangladeshGeoData.divisions) {
+            for (const dist of div.districts) {
+                const thana = dist.thanas.find(t => t.id === thanaId);
+                if (thana) {
+                    foundThana = thana;
+                    foundDistrictId = dist.id;
+                    foundDistrictName = dist.name;
+                    foundDivisionId = div.id;
+                    foundDivisionName = div.name;
+                    break;
+                }
+            }
+            if (foundThana)
+                break;
+        }
+        if (!foundThana) {
+            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ এলাকাটি খুঁজে পাওয়া যায়নি। আবার চেষ্টা করুন।");
+            return true;
+        }
+        state.thanaId = thanaId;
+        state.thanaName = foundThana.name;
+        state.districtId = foundDistrictId;
+        state.districtName = foundDistrictName;
+        state.divisionId = foundDivisionId;
+        state.divisionName = foundDivisionName;
+        state.latitude = parseFloat(foundThana.latitude) || 0;
+        state.longitude = parseFloat(foundThana.longitude) || 0;
+        state.step = "confirm";
+        tgRegisterMap.set(chatId, state);
+        const summary = `📋 <b>আপনার তথ্য যাচাই করুন:</b>\n` +
+            `📍 ধাপ ৫/${TOTAL_STEPS}: নিশ্চিতকরণ\n\n` +
+            `👤 নাম: <b>${state.fullName}</b>\n` +
+            `📱 মোবাইল: <b>${state.phoneNumber}</b>\n` +
+            `🩸 রক্তের গ্রুপ: <b>${state.bloodGroup}</b>\n` +
+            `📍 বিভাগ: <b>${foundDivisionName}</b>\n` +
+            `🏙️ জেলা: <b>${foundDistrictName}</b>\n` +
+            `🏘️ উপজেলা/থানা: <b>${foundThana.name}</b>\n\n` +
+            `তথ্য সঠিক থাকলে নিশ্চিত করুন।`;
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, summary, [
+            [{ label: "✅ নিশ্চিত করুন", data: "REG_CONFIRM:yes" }],
+            [{ label: "🔄 আবার শুরু করুন", data: "REG_RESTART:" }],
+            [{ label: "❌ বাতিল", data: "REG_CANCEL" }],
+        ]);
+        return true;
+    }
     // ── Blood group ───────────────────────────────────────────────────────────
     if (data.startsWith("REG_BG:")) {
         const bg = data.slice(7);
@@ -191,10 +303,11 @@ async function handleTgRegisterCallback(chatId, data) {
         tgRegisterMap.set(chatId, state);
         const divisions = await (0, address_1.getDivision)();
         const divRows = chunkRows(divisions.map(d => ({ label: d.name, data: `REG_DIV:${d.id}` })), 3);
+        divRows.push([{ label: "🔍 এলাকার নাম লিখুন", data: "REG_LOC_TEXT" }]);
         divRows.push([CANCEL_BTN[0]]);
         await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ রক্তের গ্রুপ: <b>${bg}</b>\n` +
             `📍 ধাপ ৪/${TOTAL_STEPS}: এলাকা\n\n` +
-            `আপনার <b>বিভাগ</b> নির্বাচন করুন:`, divRows);
+            `আপনার <b>বিভাগ</b> নির্বাচন করুন অথবা <b>"🔍 এলাকার নাম লিখুন"</b> চাপুন:`, divRows);
         return true;
     }
     // ── Division ──────────────────────────────────────────────────────────────

@@ -13,6 +13,23 @@ exports.clearTgAiState = clearTgAiState;
 exports.handleTgLocationSuggest = handleTgLocationSuggest;
 exports.handleTgAiMessage = handleTgAiMessage;
 const intentClassifier_1 = require("../facebookBotHandler/ai/intentClassifier");
+const bangladeshGeoLoactionData_1 = require("../../utils/bangladeshGeoLoactionData");
+/** Build a display label for a location entity showing parent context */
+function buildLocationLabel(entity) {
+    if (entity.type === "thana" && entity.districtId) {
+        for (const div of bangladeshGeoLoactionData_1.bangladeshGeoData.divisions) {
+            const dist = div.districts.find(d => d.id === entity.districtId);
+            if (dist)
+                return `${entity.name}  ·  ${dist.name}`;
+        }
+    }
+    if (entity.type === "district" && entity.divisionId) {
+        const div = bangladeshGeoLoactionData_1.bangladeshGeoData.divisions.find(d => d.id === entity.divisionId);
+        if (div)
+            return `${entity.name}  ·  ${div.name}`;
+    }
+    return entity.name;
+}
 const entityExtractor_1 = require("../facebookBotHandler/ai/entityExtractor");
 const faqKnowledgeBase_1 = require("../facebookBotHandler/ai/faqKnowledgeBase");
 const sendMessageToTgUser_1 = require("./sendMessageToTgUser");
@@ -173,13 +190,13 @@ async function handleTgAiMessage(chatId, text) {
             }
             else {
                 // Exact match failed → fuzzy suggestions as inline buttons
-                const suggestions = (0, entityExtractor_1.suggestLocations)(text, 5);
+                const suggestions = (0, entityExtractor_1.suggestLocations)(text, 6);
                 if (suggestions.length > 0) {
-                    const rows = suggestions.map(s => [{ label: `📍 ${s.name}`, data: `LOC_SUGGEST:${s.id}` }]);
-                    await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "এলাকাটি সঠিকভাবে বোঝা যায়নি। এগুলোর মধ্যে কোনটি বোঝাতে চেয়েছেন?", rows);
+                    const rows = suggestions.map(s => [{ label: `📍 ${buildLocationLabel(s)}`, data: `LOC_SUGGEST:${s.id}` }]);
+                    await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "🔍 এলাকাটি সঠিকভাবে বোঝা যায়নি। নিচের কোনটি বোঝাতে চেয়েছেন?", rows);
                 }
                 else {
-                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে এলাকার নাম লিখুন (যেমন: ঢাকা, Mirpur, Chittagong):");
+                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকার নাম বুঝতে পারিনি। আরো নির্দিষ্ট করে লিখুন\n(যেমন: মিরপুর-১০, গুলশান-১, chittagong, sylhet):");
                 }
                 return true;
             }

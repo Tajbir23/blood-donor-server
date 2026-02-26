@@ -250,14 +250,26 @@ function charOverlapScore(a, b) {
     }
     return matches / longer.length;
 }
+/** Remove all whitespace for space-agnostic matching ("রাজার হাট" === "রাজারহাট") */
+function noSpace(s) {
+    return s.replace(/\s+/g, "");
+}
 /**
  * Fuzzy-search the location index and return the top `limit` closest matches.
- * Used when exact extraction fails so the bot can suggest alternatives.
+ * Scoring priority (high → low):
+ *   1. Exact match (space-normalized)  → 1.0
+ *   2. Input is prefix of pattern       → 0.92
+ *   3. Pattern is prefix of input       → 0.87
+ *   4. Substring (original)            → 0.78
+ *   5. Space-stripped substring         → 0.72
+ *   6. Token-level ratio match          → 0.5–0.85
+ *   7. Character overlap                → 0.3–0.6
  */
 function suggestLocations(text, limit = 5) {
     const cleaned = text.toLowerCase().normalize("NFC").trim();
+    const cleanedNS = noSpace(cleaned); // no-space version
     const inputTokens = cleaned.split(/[\s,।\-_]+/).filter(t => t.length >= 2);
-    if (inputTokens.length === 0)
+    if (inputTokens.length === 0 && cleanedNS.length < 2)
         return [];
     const index = getLocationIndex();
     const scored = [];
@@ -265,31 +277,55 @@ function suggestLocations(text, limit = 5) {
         let bestScore = 0;
         for (const pattern of entry.patterns) {
             const p = pattern.toLowerCase();
+            const pNS = noSpace(p);
             if (p.length < 2)
                 continue;
-            // Exact substring
-            if (cleaned.includes(p) || p.includes(cleaned)) {
-                bestScore = Math.max(bestScore, 0.95);
+            // 1. Exact (space-normalized)
+            if (cleaned === p || (cleanedNS.length >= 2 && cleanedNS === pNS)) {
+                bestScore = 1.0;
+                break;
+            }
+            // 2. Input is prefix of pattern ("রাজার" → "রাজারহাট")
+            if (cleanedNS.length >= 2 && pNS.startsWith(cleanedNS)) {
+                const ratio = cleanedNS.length / pNS.length;
+                bestScore = Math.max(bestScore, 0.7 + ratio * 0.22);
                 continue;
             }
-            // Token-level matching
+            // 3. Pattern is prefix of input ("ঢাকা" matches "ঢাকামেট্রো")
+            if (pNS.length >= 2 && cleanedNS.startsWith(pNS)) {
+                const ratio = pNS.length / cleanedNS.length;
+                bestScore = Math.max(bestScore, 0.65 + ratio * 0.22);
+                continue;
+            }
+            // 4. Substring (original with spaces)
+            if (cleaned.includes(p) || p.includes(cleaned)) {
+                bestScore = Math.max(bestScore, 0.78);
+                continue;
+            }
+            // 5. Space-stripped substring
+            if (cleanedNS.length >= 2 && (cleanedNS.includes(pNS) || pNS.includes(cleanedNS))) {
+                const ratio = Math.min(cleanedNS.length, pNS.length) / Math.max(cleanedNS.length, pNS.length);
+                bestScore = Math.max(bestScore, 0.5 + ratio * 0.22);
+                continue;
+            }
+            // 6. Token-level matching
             for (const token of inputTokens) {
                 if (token.length < 2)
                     continue;
-                if (p.includes(token)) {
-                    bestScore = Math.max(bestScore, 0.5 + (token.length / p.length) * 0.4);
-                }
-                else if (token.includes(p)) {
-                    bestScore = Math.max(bestScore, 0.5 + (p.length / token.length) * 0.4);
+                const tNS = noSpace(token);
+                if (pNS.includes(tNS) || tNS.includes(pNS)) {
+                    const ratio = Math.min(tNS.length, pNS.length) / Math.max(tNS.length, pNS.length);
+                    bestScore = Math.max(bestScore, 0.42 + ratio * 0.35);
                 }
                 else {
+                    // 7. Character overlap
                     const ov = charOverlapScore(token, p);
-                    if (ov >= 0.6)
-                        bestScore = Math.max(bestScore, ov * 0.65);
+                    if (ov >= 0.68)
+                        bestScore = Math.max(bestScore, ov * 0.58);
                 }
             }
         }
-        if (bestScore >= 0.3)
+        if (bestScore >= 0.38)
             scored.push({ entity: entry.entity, score: bestScore });
     }
     // Sort: higher score first; among equal scores prefer thana > district > division
