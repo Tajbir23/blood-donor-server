@@ -1,6 +1,12 @@
 /**
  * Telegram Bot – message sending helpers
  * Uses the Telegram Bot API via Axios (no extra library needed).
+ *
+ * Every send function automatically:
+ *   1. Sends a "typing…" chat action
+ *   2. Waits a realistic delay proportional to message length  (min 600 ms, max 3 s)
+ *   3. Then sends the actual message
+ * This produces a ChatGPT-like "thinking → response" feel in every conversation.
  */
 
 import axios from "axios";
@@ -9,20 +15,59 @@ import axios from "axios";
 const tgApi = () =>
     `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
+// ── Typing simulation helpers ─────────────────────────────────────────────────
+
+/** Strip HTML tags to measure visible text length */
+function visibleLength(html: string): number {
+    return html.replace(/<[^>]*>/g, "").length;
+}
+
+/**
+ * Calculate a realistic "typing" delay for a given message.
+ * ~25 ms per visible character, clamped to [600, 3000] ms.
+ */
+function typingMs(text: string): number {
+    const len = visibleLength(text);
+    return Math.min(3000, Math.max(600, len * 25));
+}
+
+/** Send Telegram "typing…" chat action (best-effort, swallows errors). */
+export async function sendTgTypingAction(chatId: string): Promise<void> {
+    try {
+        await axios.post(`${tgApi()}/sendChatAction`, {
+            chat_id: chatId,
+            action: "typing",
+        });
+    } catch { /* ignore */ }
+}
+
+/**
+ * Show typing indicator, wait proportional delay, then run the actual send.
+ * Used internally by every exported send function.
+ */
+async function withTyping<T>(chatId: string, text: string, fn: () => Promise<T>): Promise<T> {
+    await sendTgTypingAction(chatId);
+    await new Promise(r => setTimeout(r, typingMs(text)));
+    return fn();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Send a plain text message.
- * Markdown parse_mode lets you use *bold*, _italic_, `code` etc.
  */
 export async function sendTgMessage(chatId: string, text: string): Promise<void> {
-    try {
-        await axios.post(`${tgApi()}/sendMessage`, {
-            chat_id: chatId,
-            text,
-            parse_mode: "HTML",
-        });
-    } catch (err: any) {
-        console.error("[TG] sendTgMessage error:", err.response?.data || err.message);
-    }
+    await withTyping(chatId, text, async () => {
+        try {
+            await axios.post(`${tgApi()}/sendMessage`, {
+                chat_id: chatId,
+                text,
+                parse_mode: "HTML",
+            });
+        } catch (err: any) {
+            console.error("[TG] sendTgMessage error:", err.response?.data || err.message);
+        }
+    });
 }
 
 /**
@@ -35,19 +80,21 @@ export async function sendTgInlineKeyboard(
     text: string,
     rows: string[][]
 ): Promise<void> {
-    try {
-        const inline_keyboard = rows.map(row =>
-            row.map(label => ({ text: label, callback_data: label }))
-        );
-        await axios.post(`${tgApi()}/sendMessage`, {
-            chat_id: chatId,
-            text,
-            parse_mode: "HTML",
-            reply_markup: { inline_keyboard },
-        });
-    } catch (err: any) {
-        console.error("[TG] sendTgInlineKeyboard error:", err.response?.data || err.message);
-    }
+    await withTyping(chatId, text, async () => {
+        try {
+            const inline_keyboard = rows.map(row =>
+                row.map(label => ({ text: label, callback_data: label }))
+            );
+            await axios.post(`${tgApi()}/sendMessage`, {
+                chat_id: chatId,
+                text,
+                parse_mode: "HTML",
+                reply_markup: { inline_keyboard },
+            });
+        } catch (err: any) {
+            console.error("[TG] sendTgInlineKeyboard error:", err.response?.data || err.message);
+        }
+    });
 }
 
 /**
@@ -59,19 +106,21 @@ export async function sendTgInlineKeyboardData(
     text: string,
     rows: { label: string; data: string }[][]
 ): Promise<void> {
-    try {
-        const inline_keyboard = rows.map(row =>
-            row.map(btn => ({ text: btn.label, callback_data: btn.data }))
-        );
-        await axios.post(`${tgApi()}/sendMessage`, {
-            chat_id: chatId,
-            text,
-            parse_mode: "HTML",
-            reply_markup: { inline_keyboard },
-        });
-    } catch (err: any) {
-        console.error("[TG] sendTgInlineKeyboardData error:", err.response?.data || err.message);
-    }
+    await withTyping(chatId, text, async () => {
+        try {
+            const inline_keyboard = rows.map(row =>
+                row.map(btn => ({ text: btn.label, callback_data: btn.data }))
+            );
+            await axios.post(`${tgApi()}/sendMessage`, {
+                chat_id: chatId,
+                text,
+                parse_mode: "HTML",
+                reply_markup: { inline_keyboard },
+            });
+        } catch (err: any) {
+            console.error("[TG] sendTgInlineKeyboardData error:", err.response?.data || err.message);
+        }
+    });
 }
 
 /**
@@ -83,18 +132,20 @@ export async function sendTgUrlButton(
     buttonText: string,
     url: string
 ): Promise<void> {
-    try {
-        await axios.post(`${tgApi()}/sendMessage`, {
-            chat_id: chatId,
-            text,
-            parse_mode: "HTML",
-            reply_markup: {
-                inline_keyboard: [[{ text: buttonText, url }]],
-            },
-        });
-    } catch (err: any) {
-        console.error("[TG] sendTgUrlButton error:", err.response?.data || err.message);
-    }
+    await withTyping(chatId, text, async () => {
+        try {
+            await axios.post(`${tgApi()}/sendMessage`, {
+                chat_id: chatId,
+                text,
+                parse_mode: "HTML",
+                reply_markup: {
+                    inline_keyboard: [[{ text: buttonText, url }]],
+                },
+            });
+        } catch (err: any) {
+            console.error("[TG] sendTgUrlButton error:", err.response?.data || err.message);
+        }
+    });
 }
 
 /**
