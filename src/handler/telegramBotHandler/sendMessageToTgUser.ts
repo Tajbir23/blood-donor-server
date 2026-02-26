@@ -2,11 +2,11 @@
  * Telegram Bot – message sending helpers
  * Uses the Telegram Bot API via Axios (no extra library needed).
  *
- * Every send function automatically:
- *   1. Sends a "typing…" chat action
- *   2. Waits a realistic delay proportional to message length  (min 600 ms, max 3 s)
- *   3. Then sends the actual message
- * This produces a ChatGPT-like "thinking → response" feel in every conversation.
+ * Every send function uses a typewriter effect:
+ *   1. Sends "▌" immediately (so user sees something right away)
+ *   2. Progressively edits the message word-by-word (up to 15 frames, 120 ms apart)
+ *   3. Final edit applies the full HTML text (with any reply_markup)
+ * This produces a ChatGPT-like streaming/typewriter feel in every conversation.
  */
 
 import axios from "axios";
@@ -15,23 +15,80 @@ import axios from "axios";
 const tgApi = () =>
     `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
-// ── Typing simulation helpers ─────────────────────────────────────────────────
+// ── Typewriter helpers ────────────────────────────────────────────────────────
 
-/** Strip HTML tags to measure visible text length */
-function visibleLength(html: string): number {
-    return html.replace(/<[^>]*>/g, "").length;
+const TYPEWRITER_MAX_FRAMES = 15;
+const TYPEWRITER_INTERVAL_MS = 120;
+
+/** Strip HTML tags to get plain text for animation frames */
+function stripHtml(html: string): string {
+    return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 
 /**
- * Calculate a realistic "typing" delay for a given message.
- * ~25 ms per visible character, clamped to [600, 3000] ms.
+ * Typewriter animation:
+ *  - Sends "▌" as the initial message
+ *  - Edits word-by-word (max 15 frames, 120 ms each)
+ *  - Final edit: full HTML + optional reply_markup
+ * Returns the message_id of the sent message (useful for attaching keyboards).
  */
-function typingMs(text: string): number {
-    const len = visibleLength(text);
-    return Math.min(3000, Math.max(600, len * 25));
+async function typewrite(
+    chatId: string,
+    html: string,
+    replyMarkup?: object
+): Promise<void> {
+    const plain = stripHtml(html);
+    const words = plain.split(/\s+/).filter(w => w.length > 0);
+
+    // ── send initial cursor ────────────────────────────────────────────────
+    let messageId: number | null = null;
+    try {
+        const resp = await axios.post(`${tgApi()}/sendMessage`, {
+            chat_id: chatId,
+            text: "▌",
+        });
+        messageId = (resp.data as { result: { message_id: number } })?.result?.message_id ?? null;
+    } catch (err: any) {
+        console.error("[TG typewriter] initial send error:", err.response?.data || err.message);
+        return;
+    }
+
+    if (!messageId) return;
+
+    // ── animate frames ─────────────────────────────────────────────────────
+    if (words.length > 1) {
+        const frames = Math.min(TYPEWRITER_MAX_FRAMES, words.length - 1);
+        const chunk = Math.ceil(words.length / (frames + 1));
+
+        for (let i = chunk; i < words.length; i += chunk) {
+            await new Promise(r => setTimeout(r, TYPEWRITER_INTERVAL_MS));
+            const partial = words.slice(0, i).join(" ") + " ▌";
+            try {
+                await axios.post(`${tgApi()}/editMessageText`, {
+                    chat_id: chatId,
+                    message_id: messageId,
+                    text: partial,
+                });
+            } catch { /* swallow rate-limit / unchanged-text errors */ }
+        }
+    }
+
+    // ── final edit: full HTML + optional keyboard ───────────────────────────
+    await new Promise(r => setTimeout(r, TYPEWRITER_INTERVAL_MS));
+    try {
+        await axios.post(`${tgApi()}/editMessageText`, {
+            chat_id: chatId,
+            message_id: messageId,
+            text: html,
+            parse_mode: "HTML",
+            ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+        });
+    } catch (err: any) {
+        console.error("[TG typewriter] final edit error:", err.response?.data || err.message);
+    }
 }
 
-/** Send Telegram "typing…" chat action (best-effort, swallows errors). */
+/** Send Telegram "typing…" chat action (best-effort, used only for keyboard-less sends). */
 export async function sendTgTypingAction(chatId: string): Promise<void> {
     try {
         await axios.post(`${tgApi()}/sendChatAction`, {
@@ -41,33 +98,13 @@ export async function sendTgTypingAction(chatId: string): Promise<void> {
     } catch { /* ignore */ }
 }
 
-/**
- * Show typing indicator, wait proportional delay, then run the actual send.
- * Used internally by every exported send function.
- */
-async function withTyping<T>(chatId: string, text: string, fn: () => Promise<T>): Promise<T> {
-    await sendTgTypingAction(chatId);
-    await new Promise(r => setTimeout(r, typingMs(text)));
-    return fn();
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Send a plain text message.
+ * Send a plain text (or HTML) message with typewriter animation.
  */
 export async function sendTgMessage(chatId: string, text: string): Promise<void> {
-    await withTyping(chatId, text, async () => {
-        try {
-            await axios.post(`${tgApi()}/sendMessage`, {
-                chat_id: chatId,
-                text,
-                parse_mode: "HTML",
-            });
-        } catch (err: any) {
-            console.error("[TG] sendTgMessage error:", err.response?.data || err.message);
-        }
-    });
+    await typewrite(chatId, text);
 }
 
 /**
@@ -80,21 +117,10 @@ export async function sendTgInlineKeyboard(
     text: string,
     rows: string[][]
 ): Promise<void> {
-    await withTyping(chatId, text, async () => {
-        try {
-            const inline_keyboard = rows.map(row =>
-                row.map(label => ({ text: label, callback_data: label }))
-            );
-            await axios.post(`${tgApi()}/sendMessage`, {
-                chat_id: chatId,
-                text,
-                parse_mode: "HTML",
-                reply_markup: { inline_keyboard },
-            });
-        } catch (err: any) {
-            console.error("[TG] sendTgInlineKeyboard error:", err.response?.data || err.message);
-        }
-    });
+    const inline_keyboard = rows.map(row =>
+        row.map(label => ({ text: label, callback_data: label }))
+    );
+    await typewrite(chatId, text, { inline_keyboard });
 }
 
 /**
@@ -106,21 +132,10 @@ export async function sendTgInlineKeyboardData(
     text: string,
     rows: { label: string; data: string }[][]
 ): Promise<void> {
-    await withTyping(chatId, text, async () => {
-        try {
-            const inline_keyboard = rows.map(row =>
-                row.map(btn => ({ text: btn.label, callback_data: btn.data }))
-            );
-            await axios.post(`${tgApi()}/sendMessage`, {
-                chat_id: chatId,
-                text,
-                parse_mode: "HTML",
-                reply_markup: { inline_keyboard },
-            });
-        } catch (err: any) {
-            console.error("[TG] sendTgInlineKeyboardData error:", err.response?.data || err.message);
-        }
-    });
+    const inline_keyboard = rows.map(row =>
+        row.map(btn => ({ text: btn.label, callback_data: btn.data }))
+    );
+    await typewrite(chatId, text, { inline_keyboard });
 }
 
 /**
@@ -132,19 +147,8 @@ export async function sendTgUrlButton(
     buttonText: string,
     url: string
 ): Promise<void> {
-    await withTyping(chatId, text, async () => {
-        try {
-            await axios.post(`${tgApi()}/sendMessage`, {
-                chat_id: chatId,
-                text,
-                parse_mode: "HTML",
-                reply_markup: {
-                    inline_keyboard: [[{ text: buttonText, url }]],
-                },
-            });
-        } catch (err: any) {
-            console.error("[TG] sendTgUrlButton error:", err.response?.data || err.message);
-        }
+    await typewrite(chatId, text, {
+        inline_keyboard: [[{ text: buttonText, url }]],
     });
 }
 
@@ -177,3 +181,5 @@ export async function setTelegramWebhook(webhookUrl: string): Promise<void> {
         console.error("[TG] setWebhook error:", err.response?.data || err.message);
     }
 }
+
+
