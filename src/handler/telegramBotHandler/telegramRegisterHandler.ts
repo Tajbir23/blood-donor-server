@@ -8,6 +8,7 @@
 import { getDivision, getDistrict, getThana } from "../facebookBotHandler/address";
 import { sendTgMessage, sendTgInlineKeyboard, sendTgInlineKeyboardData } from "./sendMessageToTgUser";
 import TelegramUserModel from "../../models/telegram/telegramUserSchema";
+import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +34,48 @@ interface TgRegisterState {
 
 const tgRegisterMap = new Map<string, TgRegisterState>();
 const REG_TTL_MS = 20 * 60 * 1000; // 20 min
+
+const TOTAL_STEPS = 5; // name, phone, blood_group, location(div+dist+thana=1), confirm
+
+const CANCEL_KEYWORDS_SET = [
+    "cancel", "বাতিল", "exit", "quit", "stop",
+    "/start", "/cancel", "/help",
+    "🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন",
+    "🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট",
+    "❓ সাহায্য", "🌐 ওয়েবসাইট",
+];
+
+function isCancelText(text: string): boolean {
+    const lower = text.trim().toLowerCase();
+    return CANCEL_KEYWORDS_SET.some(k => lower === k.toLowerCase());
+}
+
+const CANCEL_BTN = [{ label: "❌ বাতিল", data: "REG_CANCEL" }];
+
+async function showMainMenuReg(chatId: string) {
+    await sendTgInlineKeyboard(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+        ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+        ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+        ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+    ]);
+}
+
+function getLocationName(divisionId?: string, districtId?: string, thanaId?: string): { divisionName: string; districtName: string; thanaName: string } {
+    let divisionName = divisionId || "";
+    let districtName = districtId || "";
+    let thanaName    = thanaId    || "";
+    const div = bangladeshGeoData.divisions.find(d => d.id === divisionId);
+    if (div) {
+        divisionName = div.name;
+        const dist = div.districts.find(d => d.id === districtId);
+        if (dist) {
+            districtName = dist.name;
+            const thana = dist.thanas.find(t => t.id === thanaId);
+            if (thana) thanaName = thana.name;
+        }
+    }
+    return { divisionName, districtName, thanaName };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,6 +121,23 @@ export async function startTgRegistration(
     username?: string,
     firstName?: string
 ): Promise<void> {
+    // Check if already registered
+    const existing = await TelegramUserModel.findOne({ chatId }).lean();
+    if (existing) {
+        const { divisionName, districtName, thanaName } = getLocationName(existing.divisionId, existing.districtId, existing.thanaId);
+        await sendTgMessage(
+            chatId,
+            `ℹ️ আপনি ইতিমধ্যে নিবন্ধিত আছেন।\n\n` +
+            `👤 নাম: <b>${existing.fullName}</b>\n` +
+            `📱 মোবাইল: <b>${existing.phoneNumber || "—"}</b>\n` +
+            `🩸 রক্তের গ্রুপ: <b>${existing.bloodGroup}</b>\n` +
+            `📍 এলাকা: <b>${divisionName} → ${districtName} → ${thanaName}</b>\n\n` +
+            `তথ্য পরিবর্তন করতে <b>প্রোফাইল আপডেট</b> ব্যবহার করুন।`
+        );
+        await showMainMenuReg(chatId);
+        return;
+    }
+
     tgRegisterMap.set(chatId, {
         step: "name",
         username: username ?? undefined,
@@ -85,10 +145,12 @@ export async function startTgRegistration(
         lastUpdated: Date.now(),
     });
 
-    await sendTgMessage(
+    await sendTgInlineKeyboardData(
         chatId,
-        "📝 <b>রক্তদাতা হিসেবে নিবন্ধন শুরু করা যাক!</b>\n\n" +
-        "আপনার <b>পূর্ণ নাম</b> লিখুন:"
+        `📝 <b>রক্তদাতা হিসেবে নিবন্ধন শুরু করা যাক!</b>\n` +
+        `📍 ধাপ ১/${TOTAL_STEPS}: নাম\n\n` +
+        `আপনার <b>পূর্ণ নাম</b> লিখুন:`,
+        [[CANCEL_BTN[0]]]
     );
 }
 
@@ -101,37 +163,30 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
     if (state.step === "name") {
         const name = text.trim();
 
-        // Cancel / menu keyword → exit registration
-        const lowerName = name.toLowerCase();
-        const CANCEL_KEYWORDS_NAME = [
-            "cancel", "বাতিল", "exit", "quit", "stop",
-            "/start", "/cancel",
-        ];
-        if (CANCEL_KEYWORDS_NAME.some(k => lowerName === k.toLowerCase())) {
+        if (isCancelText(name)) {
             tgRegisterMap.delete(chatId);
             await sendTgMessage(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
-            const { sendTgInlineKeyboard: tgKb } = await import("./sendMessageToTgUser");
-            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
-                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
-                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
-                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
-            ]);
+            await showMainMenuReg(chatId);
             return true;
         }
 
         if (name.length < 2) {
-            await sendTgMessage(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):");
+            await sendTgInlineKeyboardData(chatId,
+                "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):",
+                [[CANCEL_BTN[0]]]);
             return true;
         }
         state.fullName = name;
         state.step = "phone";
         tgRegisterMap.set(chatId, state);
 
-        await sendTgMessage(
+        await sendTgInlineKeyboardData(
             chatId,
-            `✅ ধন্যবাদ <b>${name}</b>!\n\n` +
+            `✅ ধন্যবাদ <b>${name}</b>!\n` +
+            `📍 ধাপ ২/${TOTAL_STEPS}: মোবাইল নম্বর\n\n` +
             `এখন আপনার <b>মোবাইল নম্বর</b> লিখুন:\n` +
-            `(যেমন: <code>01XXXXXXXXX</code>)`
+            `(যেমন: <code>01XXXXXXXXX</code>)`,
+            [[CANCEL_BTN[0]]]
         );
         return true;
     }
@@ -139,35 +194,20 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
     if (state.step === "phone") {
         const phone = text.trim();
 
-        // Cancel / menu keyword → exit registration
-        const lowerPhone = phone.toLowerCase();
-        const CANCEL_KEYWORDS = [
-            "cancel", "বাতিল", "exit", "quit", "stop",
-            "/start", "/help", "/cancel",
-            "🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন",
-            "🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট",
-            "❓ সাহায্য", "🌐 ওয়েবসাইট",
-        ];
-        if (CANCEL_KEYWORDS.some(k => lowerPhone === k.toLowerCase())) {
+        if (isCancelText(phone)) {
             tgRegisterMap.delete(chatId);
             await sendTgMessage(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
-            // Re-import showMainMenu logic inline to avoid circular imports
-            const { sendTgInlineKeyboard: tgKb } = await import("./sendMessageToTgUser");
-            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
-                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
-                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
-                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
-            ]);
+            await showMainMenuReg(chatId);
             return true;
         }
 
         if (!isValidBDPhone(phone)) {
-            await sendTgMessage(
+            await sendTgInlineKeyboardData(
                 chatId,
                 "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
                 "নম্বর অবশ্যই <code>01</code> দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
-                "(যেমন: <code>01712345678</code>)\n\n" +
-                "নিবন্ধন বাতিল করতে <b>Cancel</b> লিখুন।"
+                "(যেমন: <code>01712345678</code>)",
+                [[CANCEL_BTN[0]]]
             );
             return true;
         }
@@ -175,18 +215,24 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
         state.step = "blood_group";
         tgRegisterMap.set(chatId, state);
 
+        const bgRows = [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row =>
+            row.map(bg => ({ label: bg, data: `REG_BG:${bg}` }))
+        );
+        bgRows.push([CANCEL_BTN[0]]);
         await sendTgInlineKeyboardData(
             chatId,
-            `✅ মোবাইল: <b>${state.phoneNumber}</b>\n\nএখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`,
-            [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row =>
-                row.map(bg => ({ label: bg, data: `REG_BG:${bg}` }))
-            )
+            `✅ মোবাইল: <b>${state.phoneNumber}</b>\n` +
+            `📍 ধাপ ৩/${TOTAL_STEPS}: রক্তের গ্রুপ\n\n` +
+            `এখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`,
+            bgRows
         );
         return true;
     }
 
     // If user types text when a keyboard choice is expected, remind them
-    await sendTgMessage(chatId, "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।");
+    await sendTgInlineKeyboardData(chatId,
+        "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।",
+        [[CANCEL_BTN[0]]]);
     return true;
 }
 
@@ -196,6 +242,14 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
     if (!state) return false;
     state.lastUpdated = Date.now();
 
+    // ── Cancel ────────────────────────────────────────────────────────────────
+    if (data === "REG_CANCEL") {
+        tgRegisterMap.delete(chatId);
+        await sendTgMessage(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+        await showMainMenuReg(chatId);
+        return true;
+    }
+
     // ── Blood group ───────────────────────────────────────────────────────────
     if (data.startsWith("REG_BG:")) {
         const bg = data.slice(7);
@@ -204,11 +258,15 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
         tgRegisterMap.set(chatId, state);
 
         const divisions = await getDivision();
-        const rows = chunkRows<{ label: string; data: string }>(
+        const divRows = chunkRows<{ label: string; data: string }>(
             divisions.map(d => ({ label: d.name, data: `REG_DIV:${d.id}` })),
             3
         );
-        await sendTgInlineKeyboardData(chatId, `✅ রক্তের গ্রুপ: <b>${bg}</b>\n\nআপনার <b>বিভাগ</b> নির্বাচন করুন:`, rows);
+        divRows.push([CANCEL_BTN[0]]);
+        await sendTgInlineKeyboardData(chatId,
+            `✅ রক্তের গ্রুপ: <b>${bg}</b>\n` +
+            `📍 ধাপ ৪/${TOTAL_STEPS}: এলাকা\n\n` +
+            `আপনার <b>বিভাগ</b> নির্বাচন করুন:`, divRows);
         return true;
     }
 
@@ -227,11 +285,13 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
         tgRegisterMap.set(chatId, state);
 
         const districts = await getDistrict(divisionId);
-        const rows = chunkRows<{ label: string; data: string }>(
+        const distRows = chunkRows<{ label: string; data: string }>(
             districts.map(d => ({ label: d.name, data: `REG_DIST:${d.id}` })),
             3
         );
-        await sendTgInlineKeyboardData(chatId, `✅ বিভাগ: <b>${div.name}</b>\n\nআপনার <b>জেলা</b> নির্বাচন করুন:`, rows);
+        distRows.push([CANCEL_BTN[0]]);
+        await sendTgInlineKeyboardData(chatId,
+            `✅ বিভাগ: <b>${div.name}</b>\n\nআপনার <b>জেলা</b> নির্বাচন করুন:`, distRows);
         return true;
     }
 
@@ -250,11 +310,13 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
         tgRegisterMap.set(chatId, state);
 
         const thanas = await getThana(districtId, state.divisionId);
-        const rows = chunkRows<{ label: string; data: string }>(
+        const thanaRows = chunkRows<{ label: string; data: string }>(
             thanas.map(t => ({ label: t.name, data: `REG_THANA:${t.id}` })),
             3
         );
-        await sendTgInlineKeyboardData(chatId, `✅ জেলা: <b>${dist.name}</b>\n\nআপনার <b>উপজেলা/থানা</b> নির্বাচন করুন:`, rows);
+        thanaRows.push([CANCEL_BTN[0]]);
+        await sendTgInlineKeyboardData(chatId,
+            `✅ জেলা: <b>${dist.name}</b>\n\nআপনার <b>উপজেলা/থানা</b> নির্বাচন করুন:`, thanaRows);
         return true;
     }
 
@@ -275,18 +337,20 @@ export async function handleTgRegisterCallback(chatId: string, data: string): Pr
         tgRegisterMap.set(chatId, state);
 
         const summary =
-            `📋 <b>আপনার তথ্য:</b>\n\n` +
+            `📋 <b>আপনার তথ্য যাচাই করুন:</b>\n` +
+            `📍 ধাপ ৫/${TOTAL_STEPS}: নিশ্চিতকরণ\n\n` +
             `👤 নাম: <b>${state.fullName}</b>\n` +
             `📱 মোবাইল: <b>${state.phoneNumber}</b>\n` +
             `🩸 রক্তের গ্রুপ: <b>${state.bloodGroup}</b>\n` +
             `📍 বিভাগ: <b>${state.divisionName}</b>\n` +
             `🏙️ জেলা: <b>${state.districtName}</b>\n` +
             `🏘️ উপজেলা/থানা: <b>${thana.name}</b>\n\n` +
-            `তথ্য সঠিক থাকলে <b>নিশ্চিত করুন</b>।`;
+            `তথ্য সঠিক থাকলে নিশ্চিত করুন।`;
 
         await sendTgInlineKeyboardData(chatId, summary, [
             [{ label: "✅ নিশ্চিত করুন", data: "REG_CONFIRM:yes" }],
             [{ label: "🔄 আবার শুরু করুন", data: "REG_RESTART:" }],
+            [{ label: "❌ বাতিল", data: "REG_CANCEL" }],
         ]);
         return true;
     }

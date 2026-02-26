@@ -12,6 +12,7 @@
 import { getDivision, getDistrict, getThana } from "../facebookBotHandler/address";
 import { sendTgMessage, sendTgInlineKeyboard, sendTgInlineKeyboardData } from "./sendMessageToTgUser";
 import TelegramUserModel from "../../models/telegram/telegramUserSchema";
+import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,41 @@ interface ProfileState {
 
 const profileMap = new Map<string, ProfileState>();
 const PROFILE_TTL_MS = 15 * 60 * 1000; // 15 min
+
+const PROF_CANCEL_KEYWORDS = [
+    "cancel", "বাতিল", "exit", "quit", "stop",
+    "/start", "/cancel",
+];
+
+function isProfCancelText(text: string): boolean {
+    const lower = text.trim().toLowerCase();
+    return PROF_CANCEL_KEYWORDS.some(k => lower === k.toLowerCase());
+}
+
+function getLocationNames(divisionId?: string, districtId?: string, thanaId?: string) {
+    let divisionName = divisionId || "—";
+    let districtName = districtId || "—";
+    let thanaName    = thanaId    || "—";
+    const div = bangladeshGeoData.divisions.find(d => d.id === divisionId);
+    if (div) {
+        divisionName = div.name;
+        const dist = div.districts.find(d => d.id === districtId);
+        if (dist) {
+            districtName = dist.name;
+            const thana = dist.thanas.find(t => t.id === thanaId);
+            if (thana) thanaName = thana.name;
+        }
+    }
+    return { divisionName, districtName, thanaName };
+}
+
+async function showProfMenu(chatId: string) {
+    await sendTgInlineKeyboard(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+        ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+        ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+        ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+    ]);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -111,14 +147,17 @@ export async function startTgProfileUpdate(chatId: string): Promise<void> {
 
     profileMap.set(chatId, { step: "menu", lastUpdated: Date.now() });
 
+    const { divisionName, districtName, thanaName } = getLocationNames(user.divisionId, user.districtId, user.thanaId);
+    const lastDonation = user.lastDonationDate ? formatDate(new Date(user.lastDonationDate)) : "—";
+
     await sendTgMessage(
         chatId,
         `📋 <b>আপনার বর্তমান তথ্য:</b>\n\n` +
         `👤 নাম: <b>${user.fullName}</b>\n` +
         `📱 মোবাইল: <b>${user.phoneNumber || "—"}</b>\n` +
         `🩸 রক্তের গ্রুপ: <b>${user.bloodGroup}</b>\n` +
-        `📍 এলাকা: <b>${user.thanaId}</b>\n` +
-        `📅 শেষ দান: <b>${user.lastDonationDate ? formatDate(new Date(user.lastDonationDate)) : "—"}</b>\n\n` +
+        `📍 এলাকা: <b>${divisionName} → ${districtName} → ${thanaName}</b>\n` +
+        `📅 শেষ দান: <b>${lastDonation}</b>\n\n` +
         `কী আপডেট করতে চান?`
     );
 
@@ -146,13 +185,14 @@ export async function startTgDonationDateUpdate(chatId: string): Promise<void> {
     profileMap.set(chatId, { step: "donation_date", field: "donation_date", lastUpdated: Date.now() });
 
     const last = user.lastDonationDate ? formatDate(new Date(user.lastDonationDate)) : "এখনো দেননি";
-    await sendTgMessage(
+    await sendTgInlineKeyboardData(
         chatId,
         `📅 <b>শেষ রক্তদানের তারিখ আপডেট</b>\n\n` +
         `বর্তমান তারিখ: <b>${last}</b>\n\n` +
         `নতুন তারিখ লিখুন:\n` +
         `ফরম্যাট: <code>DD/MM/YYYY</code> বা <code>YYYY-MM-DD</code>\n` +
-        `(যেমন: <code>25/02/2026</code>)`
+        `(যেমন: <code>25/02/2026</code>)`,
+        [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]
     );
 }
 
@@ -165,8 +205,15 @@ export async function handleTgProfileText(chatId: string, text: string): Promise
     // ── Name ──────────────────────────────────────────────────────────────────
     if (state.step === "name") {
         const name = text.trim();
+        if (isProfCancelText(name)) {
+            profileMap.delete(chatId);
+            await sendTgMessage(chatId, "❌ আপডেট বাতিল করা হয়েছে।");
+            await showProfMenu(chatId);
+            return true;
+        }
         if (name.length < 2) {
-            await sendTgMessage(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):");
+            await sendTgInlineKeyboardData(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):",
+                [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]);
             return true;
         }
         state.newValue = name;
@@ -183,11 +230,18 @@ export async function handleTgProfileText(chatId: string, text: string): Promise
     // ── Phone ────────────────────────────────────────────────────────────────
     if (state.step === "phone") {
         const phone = text.trim();
+        if (isProfCancelText(phone)) {
+            profileMap.delete(chatId);
+            await sendTgMessage(chatId, "❌ আপডেট বাতিল করা হয়েছে।");
+            await showProfMenu(chatId);
+            return true;
+        }
         if (!isValidBDPhone(phone)) {
-            await sendTgMessage(chatId,
+            await sendTgInlineKeyboardData(chatId,
                 "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
                 "নম্বর অবশ্যই 01 দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
-                "(যেমন: <code>01712345678</code>)"
+                "(যেমন: <code>01712345678</code>)",
+                [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]
             );
             return true;
         }
@@ -204,12 +258,19 @@ export async function handleTgProfileText(chatId: string, text: string): Promise
 
     // ── Donation date ─────────────────────────────────────────────────────────
     if (state.step === "donation_date") {
+        if (isProfCancelText(text)) {
+            profileMap.delete(chatId);
+            await sendTgMessage(chatId, "❌ আপডেট বাতিল করা হয়েছে।");
+            await showProfMenu(chatId);
+            return true;
+        }
         const parsed = parseDate(text);
         if (!parsed || parsed > new Date()) {
-            await sendTgMessage(chatId,
+            await sendTgInlineKeyboardData(chatId,
                 "❌ সঠিক তারিখ লিখুন। ভবিষ্যতের তারিখ গ্রহণযোগ্য নয়।\n" +
                 "ফরম্যাট: <code>DD/MM/YYYY</code> বা <code>YYYY-MM-DD</code>\n" +
-                "(যেমন: <code>25/02/2026</code>)"
+                "(যেমন: <code>25/02/2026</code>)",
+                [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]
             );
             return true;
         }
@@ -225,7 +286,9 @@ export async function handleTgProfileText(chatId: string, text: string): Promise
     }
 
     // If waiting for keyboard input
-    await sendTgMessage(chatId, "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।");
+    await sendTgInlineKeyboardData(chatId,
+        "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।",
+        [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]);
     return true;
 }
 
@@ -241,6 +304,7 @@ export async function handleTgProfileCallback(chatId: string, data: string): Pro
     if (data === "PROF_CANCEL") {
         profileMap.delete(chatId);
         await sendTgMessage(chatId, "✅ আপডেট বাতিল করা হয়েছে।");
+        await showProfMenu(chatId);
         return true;
     }
 
@@ -252,14 +316,18 @@ export async function handleTgProfileCallback(chatId: string, data: string): Pro
         if (field === "name") {
             state.step = "name";
             profileMap.set(chatId, state);
-            await sendTgMessage(chatId, "নতুন <b>পূর্ণ নাম</b> লিখুন:");
+            await sendTgInlineKeyboardData(chatId,
+                "নতুন <b>পূর্ণ নাম</b> লিখুন:\n(Cancel লিখুন বা নিচের বোতাম দিন)",
+                [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]);
             return true;
         }
 
         if (field === "phone") {
             state.step = "phone";
             profileMap.set(chatId, state);
-            await sendTgMessage(chatId, "নতুন <b>মোবাইল নম্বর</b> লিখুন:\n(যেমন: <code>01712345678</code>)");
+            await sendTgInlineKeyboardData(chatId,
+                "নতুন <b>মোবাইল নম্বর</b> লিখুন:\n(যেমন: <code>01712345678</code>)",
+                [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]);
             return true;
         }
 
@@ -289,12 +357,11 @@ export async function handleTgProfileCallback(chatId: string, data: string): Pro
         if (field === "donation_date") {
             state.step = "donation_date";
             profileMap.set(chatId, state);
-            await sendTgMessage(
-                chatId,
+            await sendTgInlineKeyboardData(chatId,
                 "শেষ রক্তদানের তারিখ লিখুন:\n" +
                 "ফরম্যাট: <code>DD/MM/YYYY</code> বা <code>YYYY-MM-DD</code>\n" +
-                "(যেমন: <code>25/02/2026</code>)"
-            );
+                "(যেমন: <code>25/02/2026</code>)",
+                [[{ label: "❌ বাতিল", data: "PROF_CANCEL" }]]);
             return true;
         }
 

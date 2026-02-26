@@ -32,6 +32,15 @@ const handleTgTextMessage = async (chatId, text, username, firstName) => {
         await (0, telegramRegisterHandler_1.handleTgRegisterText)(chatId, trimmed);
         return;
     }
+    // ── /cancel command ──────────────────────────────────────────────────────
+    if (trimmed === "/cancel") {
+        (0, telegramAiConversationHandler_1.clearTgAiState)(chatId);
+        (0, telegramRegisterHandler_1.clearTgRegistration)(chatId);
+        (0, telegramProfileHandler_1.clearTgProfileUpdate)(chatId);
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ বাতিল করা হয়েছে।");
+        await showMainMenu(chatId);
+        return;
+    }
     // ── /start command ─────────────────────────────────────────────────────────
     if (trimmed === "/start") {
         (0, telegramAiConversationHandler_1.clearTgAiState)(chatId);

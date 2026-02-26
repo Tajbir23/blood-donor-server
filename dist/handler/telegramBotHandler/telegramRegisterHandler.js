@@ -5,39 +5,6 @@
  * Collects: name → blood group → division → district → thana
  * Saves to TelegramUserModel (MongoDB) with GeoJSON location.
  */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -50,8 +17,46 @@ exports.handleTgRegisterCallback = handleTgRegisterCallback;
 const address_1 = require("../facebookBotHandler/address");
 const sendMessageToTgUser_1 = require("./sendMessageToTgUser");
 const telegramUserSchema_1 = __importDefault(require("../../models/telegram/telegramUserSchema"));
+const bangladeshGeoLoactionData_1 = require("../../utils/bangladeshGeoLoactionData");
 const tgRegisterMap = new Map();
 const REG_TTL_MS = 20 * 60 * 1000; // 20 min
+const TOTAL_STEPS = 5; // name, phone, blood_group, location(div+dist+thana=1), confirm
+const CANCEL_KEYWORDS_SET = [
+    "cancel", "বাতিল", "exit", "quit", "stop",
+    "/start", "/cancel", "/help",
+    "🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন",
+    "🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট",
+    "❓ সাহায্য", "🌐 ওয়েবসাইট",
+];
+function isCancelText(text) {
+    const lower = text.trim().toLowerCase();
+    return CANCEL_KEYWORDS_SET.some(k => lower === k.toLowerCase());
+}
+const CANCEL_BTN = [{ label: "❌ বাতিল", data: "REG_CANCEL" }];
+async function showMainMenuReg(chatId) {
+    await (0, sendMessageToTgUser_1.sendTgInlineKeyboard)(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+        ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+        ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+        ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+    ]);
+}
+function getLocationName(divisionId, districtId, thanaId) {
+    let divisionName = divisionId || "";
+    let districtName = districtId || "";
+    let thanaName = thanaId || "";
+    const div = bangladeshGeoLoactionData_1.bangladeshGeoData.divisions.find(d => d.id === divisionId);
+    if (div) {
+        divisionName = div.name;
+        const dist = div.districts.find(d => d.id === districtId);
+        if (dist) {
+            districtName = dist.name;
+            const thana = dist.thanas.find(t => t.id === thanaId);
+            if (thana)
+                thanaName = thana.name;
+        }
+    }
+    return { divisionName, districtName, thanaName };
+}
 // ── Helpers ───────────────────────────────────────────────────────────────────
 // Chunk array into rows of given size
 function chunkRows(arr, size) {
@@ -86,14 +91,28 @@ function clearTgRegistration(chatId) {
 }
 /** Entry point: begin registration flow */
 async function startTgRegistration(chatId, username, firstName) {
+    // Check if already registered
+    const existing = await telegramUserSchema_1.default.findOne({ chatId }).lean();
+    if (existing) {
+        const { divisionName, districtName, thanaName } = getLocationName(existing.divisionId, existing.districtId, existing.thanaId);
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `ℹ️ আপনি ইতিমধ্যে নিবন্ধিত আছেন।\n\n` +
+            `👤 নাম: <b>${existing.fullName}</b>\n` +
+            `📱 মোবাইল: <b>${existing.phoneNumber || "—"}</b>\n` +
+            `🩸 রক্তের গ্রুপ: <b>${existing.bloodGroup}</b>\n` +
+            `📍 এলাকা: <b>${divisionName} → ${districtName} → ${thanaName}</b>\n\n` +
+            `তথ্য পরিবর্তন করতে <b>প্রোফাইল আপডেট</b> ব্যবহার করুন।`);
+        await showMainMenuReg(chatId);
+        return;
+    }
     tgRegisterMap.set(chatId, {
         step: "name",
         username: username !== null && username !== void 0 ? username : undefined,
         firstName: firstName !== null && firstName !== void 0 ? firstName : undefined,
         lastUpdated: Date.now(),
     });
-    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "📝 <b>রক্তদাতা হিসেবে নিবন্ধন শুরু করা যাক!</b>\n\n" +
-        "আপনার <b>পূর্ণ নাম</b> লিখুন:");
+    await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `📝 <b>রক্তদাতা হিসেবে নিবন্ধন শুরু করা যাক!</b>\n` +
+        `📍 ধাপ ১/${TOTAL_STEPS}: নাম\n\n` +
+        `আপনার <b>পূর্ণ নাম</b> লিখুন:`, [[CANCEL_BTN[0]]]);
 }
 /** Handle a plain text message when in registration flow */
 async function handleTgRegisterText(chatId, text) {
@@ -103,73 +122,51 @@ async function handleTgRegisterText(chatId, text) {
     state.lastUpdated = Date.now();
     if (state.step === "name") {
         const name = text.trim();
-        // Cancel / menu keyword → exit registration
-        const lowerName = name.toLowerCase();
-        const CANCEL_KEYWORDS_NAME = [
-            "cancel", "বাতিল", "exit", "quit", "stop",
-            "/start", "/cancel",
-        ];
-        if (CANCEL_KEYWORDS_NAME.some(k => lowerName === k.toLowerCase())) {
+        if (isCancelText(name)) {
             tgRegisterMap.delete(chatId);
             await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
-            const { sendTgInlineKeyboard: tgKb } = await Promise.resolve().then(() => __importStar(require("./sendMessageToTgUser")));
-            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
-                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
-                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
-                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
-            ]);
+            await showMainMenuReg(chatId);
             return true;
         }
         if (name.length < 2) {
-            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):");
+            await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):", [[CANCEL_BTN[0]]]);
             return true;
         }
         state.fullName = name;
         state.step = "phone";
         tgRegisterMap.set(chatId, state);
-        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `✅ ধন্যবাদ <b>${name}</b>!\n\n` +
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ ধন্যবাদ <b>${name}</b>!\n` +
+            `📍 ধাপ ২/${TOTAL_STEPS}: মোবাইল নম্বর\n\n` +
             `এখন আপনার <b>মোবাইল নম্বর</b> লিখুন:\n` +
-            `(যেমন: <code>01XXXXXXXXX</code>)`);
+            `(যেমন: <code>01XXXXXXXXX</code>)`, [[CANCEL_BTN[0]]]);
         return true;
     }
     if (state.step === "phone") {
         const phone = text.trim();
-        // Cancel / menu keyword → exit registration
-        const lowerPhone = phone.toLowerCase();
-        const CANCEL_KEYWORDS = [
-            "cancel", "বাতিল", "exit", "quit", "stop",
-            "/start", "/help", "/cancel",
-            "🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন",
-            "🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট",
-            "❓ সাহায্য", "🌐 ওয়েবসাইট",
-        ];
-        if (CANCEL_KEYWORDS.some(k => lowerPhone === k.toLowerCase())) {
+        if (isCancelText(phone)) {
             tgRegisterMap.delete(chatId);
             await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
-            // Re-import showMainMenu logic inline to avoid circular imports
-            const { sendTgInlineKeyboard: tgKb } = await Promise.resolve().then(() => __importStar(require("./sendMessageToTgUser")));
-            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
-                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
-                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
-                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
-            ]);
+            await showMainMenuReg(chatId);
             return true;
         }
         if (!isValidBDPhone(phone)) {
-            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
+            await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
                 "নম্বর অবশ্যই <code>01</code> দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
-                "(যেমন: <code>01712345678</code>)\n\n" +
-                "নিবন্ধন বাতিল করতে <b>Cancel</b> লিখুন।");
+                "(যেমন: <code>01712345678</code>)", [[CANCEL_BTN[0]]]);
             return true;
         }
         state.phoneNumber = normalizeBDPhone(phone);
         state.step = "blood_group";
         tgRegisterMap.set(chatId, state);
-        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ মোবাইল: <b>${state.phoneNumber}</b>\n\nএখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`, [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row => row.map(bg => ({ label: bg, data: `REG_BG:${bg}` }))));
+        const bgRows = [["A+", "A-"], ["B+", "B-"], ["O+", "O-"], ["AB+", "AB-"]].map(row => row.map(bg => ({ label: bg, data: `REG_BG:${bg}` })));
+        bgRows.push([CANCEL_BTN[0]]);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ মোবাইল: <b>${state.phoneNumber}</b>\n` +
+            `📍 ধাপ ৩/${TOTAL_STEPS}: রক্তের গ্রুপ\n\n` +
+            `এখন আপনার <b>রক্তের গ্রুপ</b> নির্বাচন করুন:`, bgRows);
         return true;
     }
     // If user types text when a keyboard choice is expected, remind them
-    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।");
+    await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "👆 অনুগ্রহ করে উপরের বোতাম থেকে নির্বাচন করুন।", [[CANCEL_BTN[0]]]);
     return true;
 }
 /** Handle a callback query (button press) when in registration flow */
@@ -179,6 +176,13 @@ async function handleTgRegisterCallback(chatId, data) {
     if (!state)
         return false;
     state.lastUpdated = Date.now();
+    // ── Cancel ────────────────────────────────────────────────────────────────
+    if (data === "REG_CANCEL") {
+        tgRegisterMap.delete(chatId);
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+        await showMainMenuReg(chatId);
+        return true;
+    }
     // ── Blood group ───────────────────────────────────────────────────────────
     if (data.startsWith("REG_BG:")) {
         const bg = data.slice(7);
@@ -186,8 +190,11 @@ async function handleTgRegisterCallback(chatId, data) {
         state.step = "division";
         tgRegisterMap.set(chatId, state);
         const divisions = await (0, address_1.getDivision)();
-        const rows = chunkRows(divisions.map(d => ({ label: d.name, data: `REG_DIV:${d.id}` })), 3);
-        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ রক্তের গ্রুপ: <b>${bg}</b>\n\nআপনার <b>বিভাগ</b> নির্বাচন করুন:`, rows);
+        const divRows = chunkRows(divisions.map(d => ({ label: d.name, data: `REG_DIV:${d.id}` })), 3);
+        divRows.push([CANCEL_BTN[0]]);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ রক্তের গ্রুপ: <b>${bg}</b>\n` +
+            `📍 ধাপ ৪/${TOTAL_STEPS}: এলাকা\n\n` +
+            `আপনার <b>বিভাগ</b> নির্বাচন করুন:`, divRows);
         return true;
     }
     // ── Division ──────────────────────────────────────────────────────────────
@@ -204,8 +211,9 @@ async function handleTgRegisterCallback(chatId, data) {
         state.step = "district";
         tgRegisterMap.set(chatId, state);
         const districts = await (0, address_1.getDistrict)(divisionId);
-        const rows = chunkRows(districts.map(d => ({ label: d.name, data: `REG_DIST:${d.id}` })), 3);
-        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ বিভাগ: <b>${div.name}</b>\n\nআপনার <b>জেলা</b> নির্বাচন করুন:`, rows);
+        const distRows = chunkRows(districts.map(d => ({ label: d.name, data: `REG_DIST:${d.id}` })), 3);
+        distRows.push([CANCEL_BTN[0]]);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ বিভাগ: <b>${div.name}</b>\n\nআপনার <b>জেলা</b> নির্বাচন করুন:`, distRows);
         return true;
     }
     // ── District ──────────────────────────────────────────────────────────────
@@ -222,8 +230,9 @@ async function handleTgRegisterCallback(chatId, data) {
         state.step = "thana";
         tgRegisterMap.set(chatId, state);
         const thanas = await (0, address_1.getThana)(districtId, state.divisionId);
-        const rows = chunkRows(thanas.map(t => ({ label: t.name, data: `REG_THANA:${t.id}` })), 3);
-        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ জেলা: <b>${dist.name}</b>\n\nআপনার <b>উপজেলা/থানা</b> নির্বাচন করুন:`, rows);
+        const thanaRows = chunkRows(thanas.map(t => ({ label: t.name, data: `REG_THANA:${t.id}` })), 3);
+        thanaRows.push([CANCEL_BTN[0]]);
+        await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `✅ জেলা: <b>${dist.name}</b>\n\nআপনার <b>উপজেলা/থানা</b> নির্বাচন করুন:`, thanaRows);
         return true;
     }
     // ── Thana ─────────────────────────────────────────────────────────────────
@@ -241,17 +250,19 @@ async function handleTgRegisterCallback(chatId, data) {
         state.longitude = parseFloat(thana.longitude) || 0;
         state.step = "confirm";
         tgRegisterMap.set(chatId, state);
-        const summary = `📋 <b>আপনার তথ্য:</b>\n\n` +
+        const summary = `📋 <b>আপনার তথ্য যাচাই করুন:</b>\n` +
+            `📍 ধাপ ৫/${TOTAL_STEPS}: নিশ্চিতকরণ\n\n` +
             `👤 নাম: <b>${state.fullName}</b>\n` +
             `📱 মোবাইল: <b>${state.phoneNumber}</b>\n` +
             `🩸 রক্তের গ্রুপ: <b>${state.bloodGroup}</b>\n` +
             `📍 বিভাগ: <b>${state.divisionName}</b>\n` +
             `🏙️ জেলা: <b>${state.districtName}</b>\n` +
             `🏘️ উপজেলা/থানা: <b>${thana.name}</b>\n\n` +
-            `তথ্য সঠিক থাকলে <b>নিশ্চিত করুন</b>।`;
+            `তথ্য সঠিক থাকলে নিশ্চিত করুন।`;
         await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, summary, [
             [{ label: "✅ নিশ্চিত করুন", data: "REG_CONFIRM:yes" }],
             [{ label: "🔄 আবার শুরু করুন", data: "REG_RESTART:" }],
+            [{ label: "❌ বাতিল", data: "REG_CANCEL" }],
         ]);
         return true;
     }

@@ -56,6 +56,16 @@ export const handleTgTextMessage = async (
         return;
     }
 
+    // ── /cancel command ──────────────────────────────────────────────────────
+    if (trimmed === "/cancel") {
+        clearTgAiState(chatId);
+        clearTgRegistration(chatId);
+        clearTgProfileUpdate(chatId);
+        await sendTgMessage(chatId, "❌ বাতিল করা হয়েছে।");
+        await showMainMenu(chatId);
+        return;
+    }
+
     // ── /start command ─────────────────────────────────────────────────────────
     if (trimmed === "/start") {
         clearTgAiState(chatId);
