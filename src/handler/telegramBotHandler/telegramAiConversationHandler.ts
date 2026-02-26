@@ -28,6 +28,7 @@ import {
     extractLocation,
     suggestLocations,
     findLocationById,
+    findAllByName,
     getThanaCoordinates,
     getDistrictCoordinates,
     getDivisionCoordinates,
@@ -221,6 +222,18 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
         if (state.awaitingInput === "location") {
             const { entity: loc } = extractLocation(text);
             if (loc) {
+                // ── Disambiguation: check if multiple thanas share this name ─
+                const allMatches = findAllByName(loc.name);
+                if (allMatches.length > 1) {
+                    const rows = allMatches.map(s => [{ label: `📍 ${buildLocationLabel(s)}`, data: `LOC_SUGGEST:${s.id}` }]);
+                    await sendTgInlineKeyboardData(
+                        chatId,
+                        `🔍 <b>"${loc.name}"</b> নামে <b>${allMatches.length}টি এলাকা</b> আছে।\nকোন জেলার <b>${loc.name}</b> বোঝাতে চেয়েছেন?`,
+                        rows
+                    );
+                    return true;
+                }
+
                 updateState(chatId, { location: loc, awaitingInput: null });
                 const fresh = getState(chatId);
                 if (fresh.bloodGroup) {

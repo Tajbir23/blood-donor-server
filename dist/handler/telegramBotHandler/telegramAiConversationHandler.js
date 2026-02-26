@@ -172,6 +172,13 @@ async function handleTgAiMessage(chatId, text) {
         if (state.awaitingInput === "location") {
             const { entity: loc } = (0, entityExtractor_1.extractLocation)(text);
             if (loc) {
+                // ── Disambiguation: check if multiple thanas share this name ─
+                const allMatches = (0, entityExtractor_1.findAllByName)(loc.name);
+                if (allMatches.length > 1) {
+                    const rows = allMatches.map(s => [{ label: `📍 ${buildLocationLabel(s)}`, data: `LOC_SUGGEST:${s.id}` }]);
+                    await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `🔍 <b>"${loc.name}"</b> নামে <b>${allMatches.length}টি এলাকা</b> আছে।\nকোন জেলার <b>${loc.name}</b> বোঝাতে চেয়েছেন?`, rows);
+                    return true;
+                }
                 updateState(chatId, { location: loc, awaitingInput: null });
                 const fresh = getState(chatId);
                 if (fresh.bloodGroup) {

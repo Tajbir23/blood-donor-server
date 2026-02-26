@@ -199,6 +199,15 @@ async function handleTgRegisterText(chatId, text) {
             ]);
             return true;
         }
+        // ── Disambiguation: if one name matches multiple thanas exactly ───────
+        const exactMatches = (0, entityExtractor_1.findAllByName)(query).filter(s => s.type === "thana");
+        if (exactMatches.length > 1) {
+            const rows = exactMatches.map(s => [{ label: `📍 ${buildLocLabel(s)}`, data: `REG_LOC_SUGGEST:${s.id}` }]);
+            rows.push([{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }]);
+            rows.push([CANCEL_BTN[0]]);
+            await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, `🔍 <b>"${query}"</b> নামে <b>${exactMatches.length}টি উপজেলা</b> আছে।\nকোন জেলার <b>${query}</b> বোঝাতে চেয়েছেন?`, rows);
+            return true;
+        }
         const rows = suggestions.map(s => [{ label: `📍 ${buildLocLabel(s)}`, data: `REG_LOC_SUGGEST:${s.id}` }]);
         rows.push([{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }]);
         rows.push([CANCEL_BTN[0]]);

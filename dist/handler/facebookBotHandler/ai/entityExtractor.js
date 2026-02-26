@@ -11,6 +11,7 @@ exports.detectUrgency = detectUrgency;
 exports.extractBloodGroup = extractBloodGroup;
 exports.suggestLocations = suggestLocations;
 exports.findLocationById = findLocationById;
+exports.findAllByName = findAllByName;
 exports.extractLocation = extractLocation;
 exports.extractEntities = extractEntities;
 exports.getThanaCoordinates = getThanaCoordinates;
@@ -356,6 +357,21 @@ function findLocationById(id) {
     const index = getLocationIndex();
     const entry = index.entries.find(e => e.entity.id === id);
     return (_a = entry === null || entry === void 0 ? void 0 : entry.entity) !== null && _a !== void 0 ? _a : null;
+}
+/**
+ * Find ALL locations whose name exactly matches the given name (case/space-insensitive).
+ * Used to detect ambiguity — e.g. "রাজারহাট" exists in Gazipur AND Kurigram.
+ * Returns only thanas (most specific) unless none found, then districts.
+ */
+function findAllByName(name) {
+    const index = getLocationIndex();
+    const cleaned = name.toLowerCase().normalize("NFC").replace(/\s+/g, "");
+    const thanas = index.entries.filter(e => e.entity.type === "thana" &&
+        e.entity.name.toLowerCase().normalize("NFC").replace(/\s+/g, "") === cleaned).map(e => e.entity);
+    if (thanas.length > 0)
+        return thanas;
+    return index.entries.filter(e => e.entity.type === "district" &&
+        e.entity.name.toLowerCase().normalize("NFC").replace(/\s+/g, "") === cleaned).map(e => e.entity);
 }
 /**
  * Extract the best-matching location from free-form text.

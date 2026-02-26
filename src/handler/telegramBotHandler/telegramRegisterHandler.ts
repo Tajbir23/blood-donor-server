@@ -9,7 +9,7 @@ import { getDivision, getDistrict, getThana } from "../facebookBotHandler/addres
 import { sendTgMessage, sendTgInlineKeyboard, sendTgInlineKeyboardData } from "./sendMessageToTgUser";
 import TelegramUserModel from "../../models/telegram/telegramUserSchema";
 import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
-import { suggestLocations } from "../facebookBotHandler/ai/entityExtractor";
+import { suggestLocations, findAllByName } from "../facebookBotHandler/ai/entityExtractor";
 
 /** Build label with parent context: "রাজারহাট  ·  গাজীপুর" */
 function buildLocLabel(entity: { id: string; name: string; type: string; districtId?: string; divisionId?: string }): string {
@@ -265,6 +265,20 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
             );
             return true;
         }
+
+        // ── Disambiguation: if one name matches multiple thanas exactly ───────
+        const exactMatches = findAllByName(query).filter(s => s.type === "thana");
+        if (exactMatches.length > 1) {
+            const rows = exactMatches.map(s => [{ label: `📍 ${buildLocLabel(s)}`, data: `REG_LOC_SUGGEST:${s.id}` }]);
+            rows.push([{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }]);
+            rows.push([CANCEL_BTN[0]]);
+            await sendTgInlineKeyboardData(chatId,
+                `🔍 <b>"${query}"</b> নামে <b>${exactMatches.length}টি উপজেলা</b> আছে।\nকোন জেলার <b>${query}</b> বোঝাতে চেয়েছেন?`,
+                rows
+            );
+            return true;
+        }
+
         const rows = suggestions.map(s => [{ label: `📍 ${buildLocLabel(s)}`, data: `REG_LOC_SUGGEST:${s.id}` }]);
         rows.push([{ label: "📋 বিভাগ থেকে বেছে নিন", data: "REG_BACK_DIV" }]);
         rows.push([CANCEL_BTN[0]]);

@@ -386,6 +386,29 @@ export function findLocationById(id: string): LocationEntity | null {
 }
 
 /**
+ * Find ALL locations whose name exactly matches the given name (case/space-insensitive).
+ * Used to detect ambiguity — e.g. "রাজারহাট" exists in Gazipur AND Kurigram.
+ * Returns only thanas (most specific) unless none found, then districts.
+ */
+export function findAllByName(name: string): LocationEntity[] {
+    const index = getLocationIndex();
+    const cleaned = name.toLowerCase().normalize("NFC").replace(/\s+/g, "");
+
+    const thanas   = index.entries.filter(e =>
+        e.entity.type === "thana" &&
+        e.entity.name.toLowerCase().normalize("NFC").replace(/\s+/g, "") === cleaned
+    ).map(e => e.entity);
+
+    if (thanas.length > 0) return thanas;
+
+    return index.entries.filter(e =>
+        e.entity.type === "district" &&
+        e.entity.name.toLowerCase().normalize("NFC").replace(/\s+/g, "") === cleaned
+    ).map(e => e.entity);
+}
+
+
+/**
  * Extract the best-matching location from free-form text.
  * Prefers more-specific matches (thana > district > division).
  */
