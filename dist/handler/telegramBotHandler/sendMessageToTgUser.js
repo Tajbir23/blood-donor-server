@@ -24,23 +24,23 @@ const axios_1 = __importDefault(require("axios"));
 /** Base URL for the bot's API calls */
 const tgApi = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 // ── Typewriter helpers ────────────────────────────────────────────────────────
-const TYPEWRITER_MAX_FRAMES = 15;
-const TYPEWRITER_INTERVAL_MS = 120;
-/** Strip HTML tags to get plain text for animation frames */
+const TYPEWRITER_MAX_FRAMES = 25;
+const TYPEWRITER_INTERVAL_MS = 170; // ms between frames (slower = more natural)
+/** Strip HTML tags to get plain visible text for animation frames */
 function stripHtml(html) {
     return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 }
 /**
- * Typewriter animation:
- *  - Sends "▌" as the initial message
- *  - Edits word-by-word (max 15 frames, 120 ms each)
- *  - Final edit: full HTML + optional reply_markup
- * Returns the message_id of the sent message (useful for attaching keyboards).
+ * Typewriter animation — letter by letter (proper Unicode / Bengali support).
+ *  1. Sends "▌" immediately
+ *  2. Edits the message progressively, adding a chunk of characters each frame
+ *  3. Final edit: full HTML text + optional reply_markup
  */
 async function typewrite(chatId, html, replyMarkup) {
     var _a, _b, _c, _d, _e;
     const plain = stripHtml(html);
-    const words = plain.split(/\s+/).filter(w => w.length > 0);
+    // Array.from handles multi-byte Unicode (Bengali, emoji, etc.) correctly
+    const chars = Array.from(plain);
     // ── send initial cursor ────────────────────────────────────────────────
     let messageId = null;
     try {
@@ -56,13 +56,13 @@ async function typewrite(chatId, html, replyMarkup) {
     }
     if (!messageId)
         return;
-    // ── animate frames ─────────────────────────────────────────────────────
-    if (words.length > 1) {
-        const frames = Math.min(TYPEWRITER_MAX_FRAMES, words.length - 1);
-        const chunk = Math.ceil(words.length / (frames + 1));
-        for (let i = chunk; i < words.length; i += chunk) {
+    // ── animate frames (letter by letter) ─────────────────────────────────
+    if (chars.length > 1) {
+        const frames = Math.min(TYPEWRITER_MAX_FRAMES, chars.length - 1);
+        const chunkSize = Math.max(1, Math.ceil(chars.length / (frames + 1)));
+        for (let i = chunkSize; i < chars.length; i += chunkSize) {
             await new Promise(r => setTimeout(r, TYPEWRITER_INTERVAL_MS));
-            const partial = words.slice(0, i).join(" ") + " ▌";
+            const partial = chars.slice(0, i).join("") + "▌";
             try {
                 await axios_1.default.post(`${tgApi()}/editMessageText`, {
                     chat_id: chatId,
