@@ -100,6 +100,25 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
 
     if (state.step === "name") {
         const name = text.trim();
+
+        // Cancel / menu keyword → exit registration
+        const lowerName = name.toLowerCase();
+        const CANCEL_KEYWORDS_NAME = [
+            "cancel", "বাতিল", "exit", "quit", "stop",
+            "/start", "/cancel",
+        ];
+        if (CANCEL_KEYWORDS_NAME.some(k => lowerName === k.toLowerCase())) {
+            tgRegisterMap.delete(chatId);
+            await sendTgMessage(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+            const { sendTgInlineKeyboard: tgKb } = await import("./sendMessageToTgUser");
+            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+            ]);
+            return true;
+        }
+
         if (name.length < 2) {
             await sendTgMessage(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):");
             return true;
@@ -119,12 +138,36 @@ export async function handleTgRegisterText(chatId: string, text: string): Promis
 
     if (state.step === "phone") {
         const phone = text.trim();
+
+        // Cancel / menu keyword → exit registration
+        const lowerPhone = phone.toLowerCase();
+        const CANCEL_KEYWORDS = [
+            "cancel", "বাতিল", "exit", "quit", "stop",
+            "/start", "/help", "/cancel",
+            "🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন",
+            "🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট",
+            "❓ সাহায্য", "🌐 ওয়েবসাইট",
+        ];
+        if (CANCEL_KEYWORDS.some(k => lowerPhone === k.toLowerCase())) {
+            tgRegisterMap.delete(chatId);
+            await sendTgMessage(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+            // Re-import showMainMenu logic inline to avoid circular imports
+            const { sendTgInlineKeyboard: tgKb } = await import("./sendMessageToTgUser");
+            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+            ]);
+            return true;
+        }
+
         if (!isValidBDPhone(phone)) {
             await sendTgMessage(
                 chatId,
                 "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
                 "নম্বর অবশ্যই <code>01</code> দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
-                "(যেমন: <code>01712345678</code>)"
+                "(যেমন: <code>01712345678</code>)\n\n" +
+                "নিবন্ধন বাতিল করতে <b>Cancel</b> লিখুন।"
             );
             return true;
         }

@@ -5,6 +5,39 @@
  * Collects: name → blood group → division → district → thana
  * Saves to TelegramUserModel (MongoDB) with GeoJSON location.
  */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -70,6 +103,23 @@ async function handleTgRegisterText(chatId, text) {
     state.lastUpdated = Date.now();
     if (state.step === "name") {
         const name = text.trim();
+        // Cancel / menu keyword → exit registration
+        const lowerName = name.toLowerCase();
+        const CANCEL_KEYWORDS_NAME = [
+            "cancel", "বাতিল", "exit", "quit", "stop",
+            "/start", "/cancel",
+        ];
+        if (CANCEL_KEYWORDS_NAME.some(k => lowerName === k.toLowerCase())) {
+            tgRegisterMap.delete(chatId);
+            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+            const { sendTgInlineKeyboard: tgKb } = await Promise.resolve().then(() => __importStar(require("./sendMessageToTgUser")));
+            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+            ]);
+            return true;
+        }
         if (name.length < 2) {
             await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ অনুগ্রহ করে সঠিক নাম লিখুন (কমপক্ষে ২ অক্ষর):");
             return true;
@@ -84,10 +134,32 @@ async function handleTgRegisterText(chatId, text) {
     }
     if (state.step === "phone") {
         const phone = text.trim();
+        // Cancel / menu keyword → exit registration
+        const lowerPhone = phone.toLowerCase();
+        const CANCEL_KEYWORDS = [
+            "cancel", "বাতিল", "exit", "quit", "stop",
+            "/start", "/help", "/cancel",
+            "🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন",
+            "🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট",
+            "❓ সাহায্য", "🌐 ওয়েবসাইট",
+        ];
+        if (CANCEL_KEYWORDS.some(k => lowerPhone === k.toLowerCase())) {
+            tgRegisterMap.delete(chatId);
+            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ নিবন্ধন বাতিল করা হয়েছে।");
+            // Re-import showMainMenu logic inline to avoid circular imports
+            const { sendTgInlineKeyboard: tgKb } = await Promise.resolve().then(() => __importStar(require("./sendMessageToTgUser")));
+            await tgKb(chatId, "নিচের মেনু থেকে বেছে নিন:", [
+                ["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"],
+                ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"],
+                ["❓ সাহায্য", "🌐 ওয়েবসাইট"],
+            ]);
+            return true;
+        }
         if (!isValidBDPhone(phone)) {
             await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "❌ সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।\n" +
                 "নম্বর অবশ্যই <code>01</code> দিয়ে শুরু হতে হবে এবং মোট ১১ সংখ্যার হতে হবে।\n" +
-                "(যেমন: <code>01712345678</code>)");
+                "(যেমন: <code>01712345678</code>)\n\n" +
+                "নিবন্ধন বাতিল করতে <b>Cancel</b> লিখুন।");
             return true;
         }
         state.phoneNumber = normalizeBDPhone(phone);
