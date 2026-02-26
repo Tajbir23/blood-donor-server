@@ -17,7 +17,7 @@ const tgApi = () =>
 
 // ── Typewriter helpers ────────────────────────────────────────────────────────
 
-const TYPEWRITER_INTERVAL_MS = 50;    // ms between frames
+const TYPEWRITER_INTERVAL_MS = 25;    // ms between frames
 
 /** Strip HTML tags but KEEP newlines so animation preserves the message layout */
 function stripHtml(html: string): string {

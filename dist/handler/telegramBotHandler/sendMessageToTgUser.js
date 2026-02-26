@@ -24,7 +24,7 @@ const axios_1 = __importDefault(require("axios"));
 /** Base URL for the bot's API calls */
 const tgApi = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 // ── Typewriter helpers ────────────────────────────────────────────────────────
-const TYPEWRITER_INTERVAL_MS = 50; // ms between frames
+const TYPEWRITER_INTERVAL_MS = 25; // ms between frames
 /** Strip HTML tags but KEEP newlines so animation preserves the message layout */
 function stripHtml(html) {
     return html
