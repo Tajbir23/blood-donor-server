@@ -24,10 +24,15 @@ const axios_1 = __importDefault(require("axios"));
 /** Base URL for the bot's API calls */
 const tgApi = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 // ── Typewriter helpers ────────────────────────────────────────────────────────
-const TYPEWRITER_INTERVAL_MS = 80; // ms between frames
-/** Strip HTML tags to get plain visible text for animation frames */
+const TYPEWRITER_INTERVAL_MS = 50; // ms between frames
+/** Strip HTML tags but KEEP newlines so animation preserves the message layout */
 function stripHtml(html) {
-    return html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+    return html
+        .replace(/<br\s*\/?>/gi, "\n") // <br> → newline
+        .replace(/<\/p>/gi, "\n") // </p> → newline
+        .replace(/<[^>]*>/g, "") // remove all remaining tags
+        .replace(/[ \t]+/g, " ") // collapse only spaces/tabs (not \n)
+        .trim();
 }
 /**
  * Typewriter animation — letter by letter (proper Unicode / Bengali support).
