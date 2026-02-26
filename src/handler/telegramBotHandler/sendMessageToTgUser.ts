@@ -17,7 +17,7 @@ const tgApi = () =>
 
 // ── Typewriter helpers ────────────────────────────────────────────────────────
 
-const TYPEWRITER_INTERVAL_MS = 170;   // ms between frames (slower = more natural)
+const TYPEWRITER_INTERVAL_MS = 80;    // ms between frames
 
 /** Strip HTML tags to get plain visible text for animation frames */
 function stripHtml(html: string): string {
