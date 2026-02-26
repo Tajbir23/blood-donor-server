@@ -24,7 +24,6 @@ const axios_1 = __importDefault(require("axios"));
 /** Base URL for the bot's API calls */
 const tgApi = () => `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 // ── Typewriter helpers ────────────────────────────────────────────────────────
-const TYPEWRITER_MAX_FRAMES = 25;
 const TYPEWRITER_INTERVAL_MS = 170; // ms between frames (slower = more natural)
 /** Strip HTML tags to get plain visible text for animation frames */
 function stripHtml(html) {
@@ -56,11 +55,9 @@ async function typewrite(chatId, html, replyMarkup) {
     }
     if (!messageId)
         return;
-    // ── animate frames (letter by letter) ─────────────────────────────────
+    // ── animate: every single character ───────────────────────────────────────
     if (chars.length > 1) {
-        const frames = Math.min(TYPEWRITER_MAX_FRAMES, chars.length - 1);
-        const chunkSize = Math.max(1, Math.ceil(chars.length / (frames + 1)));
-        for (let i = chunkSize; i < chars.length; i += chunkSize) {
+        for (let i = 1; i < chars.length; i++) {
             await new Promise(r => setTimeout(r, TYPEWRITER_INTERVAL_MS));
             const partial = chars.slice(0, i).join("") + "▌";
             try {
