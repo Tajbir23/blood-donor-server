@@ -308,7 +308,11 @@ function keywordFallback(text) {
     }
     if (hit(["register", "donate blood", "become donor", "রেজিস্ট্রেশন",
         "রক্তদান করতে চাই", "ডোনার হতে চাই", "নিবন্ধন",
-        "donor signup", "sign up", "join as donor", "add me"])) {
+        "donor signup", "sign up", "join as donor", "add me",
+        "donar হতে চাই", "donar", "donner", "দানকারী হতে",
+        "রক্ত দিতে চাই", "রক্তদাতা হতে চাই", "ডোনার হব",
+        "ডোনার হতে", "donor হতে চাই", "donor হতে", "i want to donate",
+        "want to be donor", "want to donate"])) {
         return { intent: "REGISTER_DONOR", confidence: 0.8, scores: { ...dummy, REGISTER_DONOR: 0.8 } };
     }
     if (hit(["update", "donated today", "gave blood", "আপডেট", "রক্ত দিয়েছি",
