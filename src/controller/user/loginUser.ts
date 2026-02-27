@@ -27,7 +27,7 @@ const loginUser = async (req: Request, res: Response): Promise<void> => {
         if(user) {
             const checkPass = await verifyPass(password, user.password);
             if(checkPass) {
-                addActiveUser(user._id)
+                await addActiveUser(user._id)
                 const userId = user._id.toString();
                 const orgRole = await findOrgRole(userId);
                 const token = generateJwt(user.phone, user._id, user.role, orgRole);

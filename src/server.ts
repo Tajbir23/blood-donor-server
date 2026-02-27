@@ -4,8 +4,10 @@ import express from 'express'
 import type { NextFunction, Request, Response } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
+import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import connection from './config/db'
+import { connectRedis, disconnectRedis, getRedisClient, getRedisStatus } from './config/redis'
 import { apiLimiter } from './config/limiter'
 import router from './router/router'
 import detectVpn from './handler/validation/detectVpn'
@@ -37,13 +39,34 @@ app.use(helmet({
 // Set up custom morgan format to show cookies
 app.use(morgan(':method :url :status :res[set-cookie] - :response-time ms'))
 
+// Gzip/Brotli compression — response size 60-80% কমায়
+app.use(compression({
+    level: 6, // balanced speed vs compression ratio
+    threshold: 1024, // 1KB এর নিচে compress করবে না
+    filter: (req, res) => {
+        // WebSocket upgrade request compress করো না
+        if (req.headers['x-no-compression']) return false
+        return compression.filter(req, res)
+    }
+}))
+
 // Request size limiting to prevent request flooding
 app.use(express.json({ limit: '10kb' }))
 app.use(express.urlencoded({ extended: true, limit: '10kb' }))
 app.use(cookieParser())
 
-// Connect to MongoDB
+// Connect to MongoDB with connection pool tuning
 connection()
+
+// Connect to Redis (cache, rate-limit store, Socket.IO adapter)
+// Redis unavailable হলেও server চলবে — graceful fallback
+connectRedis().then(() => {
+    if (getRedisStatus()) {
+        console.log('[Server] Redis services active')
+    }
+}).catch(err => {
+    console.warn('[Server] Redis unavailable — using in-memory fallback')
+})
 
 // CORS setup - must be before routes
 export const allowOrigins = [
@@ -129,7 +152,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 
 app.use('/webhook', FacebookBotRouter)
 app.use('/telegram-webhook', TelegramBotRouter)
-export let activeUsers: string[] = []
 
 app.listen(PORT, async() => {
     console.log(`Server is running on http://localhost:${PORT}`)
@@ -161,3 +183,20 @@ app.listen(PORT, async() => {
         console.warn('[TG] BACKEND_URL or TELEGRAM_BOT_TOKEN missing – webhook not set');
     }
 })
+
+// ─── Graceful Shutdown ──────────────────────────────────────────────────────
+// PM2, Docker, Kubernetes — সবাই SIGINT/SIGTERM পাঠায় process বন্ধ করতে
+const gracefulShutdown = async (signal: string) => {
+    console.log(`\n[Server] ${signal} received — shutting down gracefully...`)
+    
+    try {
+        await disconnectRedis()
+    } catch (err) {
+        // ignore
+    }
+    
+    process.exit(0)
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))

@@ -25,7 +25,7 @@ export const saveUser = async (data: any) => {
     user.emailVerified = true
     await user.save
     await tempStoreUser.delete(user?.email)
-    addActiveUser(user._id)
+    await addActiveUser(user._id)
     const orgRole = await findOrgRole(user._id.toString());
     const token = generateJwt(user.phone, user._id, user.role, orgRole)
     return {user, token}

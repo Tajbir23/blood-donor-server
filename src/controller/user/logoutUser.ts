@@ -5,7 +5,7 @@ import userModel from "../../models/user/userSchema";
 
 const logoutUser = async(req: Request, res: Response): Promise<void> => {
         const { _id } = (req as any).user
-        removeActiveUser(_id);
+        await removeActiveUser(_id);
         await userModel.findByIdAndUpdate(_id, {token: null});
 
         // Clear the token cookie from the browser

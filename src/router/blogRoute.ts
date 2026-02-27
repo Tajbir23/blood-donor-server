@@ -11,9 +11,11 @@ import addBlogComment from "../controller/organization/blog/addBlogComment";
 
 const blogRouter = Router();
 
-// Public routes
-blogRouter.get('/posts', getAllBlogPosts);
-blogRouter.get('/post/:blogId', getBlogPostById);
+import { cacheMiddleware } from "../handler/cache/cacheMiddleware";
+
+// Public routes — 3 মিনিট cache
+blogRouter.get('/posts', cacheMiddleware(180), getAllBlogPosts);
+blogRouter.get('/post/:blogId', cacheMiddleware(180), getBlogPostById);
 
 // Authenticated routes
 blogRouter.post('/comment/:blogId', verifyJwt, addBlogComment);
