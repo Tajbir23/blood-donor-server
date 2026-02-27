@@ -36,14 +36,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activeUsers = exports.allowOrigins = exports.app = void 0;
+exports.allowOrigins = exports.app = void 0;
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
+const compression_1 = __importDefault(require("compression"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const db_1 = __importDefault(require("./config/db"));
+const redis_1 = require("./config/redis");
 const limiter_1 = require("./config/limiter");
 const router_1 = __importDefault(require("./router/router"));
 const organizationCheck_1 = __importDefault(require("./cron/organizationCheck"));
@@ -69,12 +71,32 @@ exports.app.use((0, helmet_1.default)({
 }));
 // Set up custom morgan format to show cookies
 exports.app.use((0, morgan_1.default)(':method :url :status :res[set-cookie] - :response-time ms'));
+// Gzip/Brotli compression — response size 60-80% কমায়
+exports.app.use((0, compression_1.default)({
+    level: 6, // balanced speed vs compression ratio
+    threshold: 1024, // 1KB এর নিচে compress করবে না
+    filter: (req, res) => {
+        // WebSocket upgrade request compress করো না
+        if (req.headers['x-no-compression'])
+            return false;
+        return compression_1.default.filter(req, res);
+    }
+}));
 // Request size limiting to prevent request flooding
 exports.app.use(express_1.default.json({ limit: '10kb' }));
 exports.app.use(express_1.default.urlencoded({ extended: true, limit: '10kb' }));
 exports.app.use((0, cookie_parser_1.default)());
-// Connect to MongoDB
+// Connect to MongoDB with connection pool tuning
 (0, db_1.default)();
+// Connect to Redis (cache, rate-limit store, Socket.IO adapter)
+// Redis unavailable হলেও server চলবে — graceful fallback
+(0, redis_1.connectRedis)().then(() => {
+    if ((0, redis_1.getRedisStatus)()) {
+        console.log('[Server] Redis services active');
+    }
+}).catch(err => {
+    console.warn('[Server] Redis unavailable — using in-memory fallback');
+});
 // CORS setup - must be before routes
 exports.allowOrigins = [
     'http://localhost:3000',
@@ -148,7 +170,6 @@ exports.app.use((err, req, res, next) => {
 });
 exports.app.use('/webhook', facebook_bot_Router_1.default);
 exports.app.use('/telegram-webhook', telegram_bot_Router_1.default);
-exports.activeUsers = [];
 exports.app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     // Verify email (SMTP) credentials on startup
@@ -176,3 +197,17 @@ exports.app.listen(PORT, async () => {
         console.warn('[TG] BACKEND_URL or TELEGRAM_BOT_TOKEN missing – webhook not set');
     }
 });
+// ─── Graceful Shutdown ──────────────────────────────────────────────────────
+// PM2, Docker, Kubernetes — সবাই SIGINT/SIGTERM পাঠায় process বন্ধ করতে
+const gracefulShutdown = async (signal) => {
+    console.log(`\n[Server] ${signal} received — shutting down gracefully...`);
+    try {
+        await (0, redis_1.disconnectRedis)();
+    }
+    catch (err) {
+        // ignore
+    }
+    process.exit(0);
+};
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

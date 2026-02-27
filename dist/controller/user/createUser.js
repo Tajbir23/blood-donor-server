@@ -25,7 +25,7 @@ const saveUser = async (data) => {
     user.emailVerified = true;
     await user.save;
     await exports.tempStoreUser.delete(user === null || user === void 0 ? void 0 : user.email);
-    (0, addActiveUser_1.default)(user._id);
+    await (0, addActiveUser_1.default)(user._id);
     const orgRole = await (0, findOrgRole_1.default)(user._id.toString());
     const token = (0, generateJwt_1.default)(user.phone, user._id, user.role, orgRole);
     return { user, token };

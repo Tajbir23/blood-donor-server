@@ -14,9 +14,10 @@ const getBlogPostById_1 = __importDefault(require("../controller/organization/bl
 const deleteBlogPost_1 = __importDefault(require("../controller/organization/blog/deleteBlogPost"));
 const addBlogComment_1 = __importDefault(require("../controller/organization/blog/addBlogComment"));
 const blogRouter = (0, express_1.Router)();
-// Public routes
-blogRouter.get('/posts', getAllBlogPosts_1.default);
-blogRouter.get('/post/:blogId', getBlogPostById_1.default);
+const cacheMiddleware_1 = require("../handler/cache/cacheMiddleware");
+// Public routes — 3 মিনিট cache
+blogRouter.get('/posts', (0, cacheMiddleware_1.cacheMiddleware)(180), getAllBlogPosts_1.default);
+blogRouter.get('/post/:blogId', (0, cacheMiddleware_1.cacheMiddleware)(180), getBlogPostById_1.default);
 // Authenticated routes
 blogRouter.post('/comment/:blogId', verifyJwt_1.default, addBlogComment_1.default);
 // Org admin routes

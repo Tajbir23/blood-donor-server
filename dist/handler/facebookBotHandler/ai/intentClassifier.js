@@ -268,6 +268,12 @@ async function predictIntent(text) {
         var _a;
         scoreMap[label] = parseFloat(((_a = scores[i]) !== null && _a !== void 0 ? _a : 0).toFixed(4));
     });
+    // If model isn't confident, try keyword fallback before giving up
+    if (conf < CONFIDENCE_THRESHOLD) {
+        const kb = keywordFallback(text);
+        if (kb.intent !== "UNKNOWN")
+            return kb;
+    }
     return {
         intent: conf >= CONFIDENCE_THRESHOLD ? intent : "UNKNOWN",
         confidence: parseFloat(conf.toFixed(4)),
