@@ -25,6 +25,7 @@ import addBotRule    from "../../../controller/administrator/system/dashboard/bo
 import getBotRules   from "../../../controller/administrator/system/dashboard/botRules/getBotRules";
 import deleteBotRule from "../../../controller/administrator/system/dashboard/botRules/deleteBotRule";
 import updateBotRule from "../../../controller/administrator/system/dashboard/botRules/updateBotRule";
+import getAllDonations from "../../../controller/administrator/system/dashboard/getAllDonations";
 
 const systemDashboardRoute = Router();
 
@@ -64,5 +65,8 @@ systemDashboardRoute.get('/bot-rules',         verifyJwt, verifyIsSuperAdmin, ge
 systemDashboardRoute.post('/bot-rules',        verifyJwt, verifyIsSuperAdmin, addBotRule)
 systemDashboardRoute.put('/bot-rules/:id',     verifyJwt, verifyIsSuperAdmin, updateBotRule)
 systemDashboardRoute.delete('/bot-rules/:id',  verifyJwt, verifyIsSuperAdmin, deleteBotRule)
+
+// Donation History routes (admin)
+systemDashboardRoute.get('/donations', verifyJwt, verifyIsAdmin, getAllDonations)
 
 export default systemDashboardRoute;
