@@ -55,6 +55,10 @@ interface TgConversationState {
     awaitingInput: "blood_group" | "location" | null;
     awaitingLocationSelect?: boolean; // true while suggestion buttons are visible
     lastUpdated: number;
+    // Conversation context
+    history: Array<{role: "user" | "bot"; text: string}>;
+    lastIntent: string | null;          // last successfully handled intent
+    lastFaqQuery: string | null;        // last text used to search FAQ
 }
 
 const tgStateMap = new Map<string, TgConversationState>();
@@ -69,6 +73,7 @@ function getState(chatId: string): TgConversationState {
         intent: null, bloodGroup: null, location: null,
         bagCount: null, isUrgent: false, awaitingInput: null,
         lastUpdated: Date.now(),
+        history: [], lastIntent: null, lastFaqQuery: null,
     };
     tgStateMap.set(chatId, fresh);
     return fresh;
@@ -81,7 +86,33 @@ function updateState(chatId: string, updates: Partial<TgConversationState>) {
 }
 
 export function clearTgAiState(chatId: string) {
-    tgStateMap.delete(chatId);
+    // Preserve conversation context (history, lastIntent) while resetting the flow state
+    const existing = tgStateMap.get(chatId);
+    const fresh: TgConversationState = {
+        intent: null, bloodGroup: null, location: null,
+        bagCount: null, isUrgent: false, awaitingInput: null,
+        lastUpdated: Date.now(),
+        history:    existing?.history    ?? [],
+        lastIntent: existing?.lastIntent ?? null,
+        lastFaqQuery: existing?.lastFaqQuery ?? null,
+    };
+    tgStateMap.set(chatId, fresh);
+}
+
+/** Append a message to this user's conversation history (max 8 entries). */
+function recordHistory(chatId: string, role: "user" | "bot", text: string) {
+    const state = getState(chatId);
+    state.history.push({ role, text: text.substring(0, 200) });
+    if (state.history.length > 8) state.history.splice(0, state.history.length - 8);
+    tgStateMap.set(chatId, state);
+}
+
+/** Returns true when the message looks like a follow-up to a previous reply. */
+function isFollowUp(text: string): boolean {
+    const t = text.trim();
+    if (t.length < 25 && /^(আরো|আরও|বিস্তারিত|বিস্তার|তাহলে|কেন|কীভাবে|কিভাবে|তারপর|আর কি|এরপর|ok|okay|হ্যাঁ|yes|more|else|further|explain|got it|তারপর কি|আর বলো|বলো|কি করব|এখন কি করব)/i.test(t)) return true;
+    if (/আরো (কিছু|জান|বল)|আরও (কিছু|জান|বল)|বিস্তারিত (বলো|জানতে)|tell me more|more (info|detail)|explain (more|further)/i.test(t)) return true;
+    return false;
 }
 
 /**
@@ -267,24 +298,50 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
         }
 
         // ── Classify intent ───────────────────────────────────────────────────
-        const prediction = await predictIntent(text);
+        // Record user message for conversation history
+        recordHistory(chatId, "user", text);
+
+        const ctxState = getState(chatId);
+        let prediction = await predictIntent(text);
         console.log(`[TG AI] Intent: ${prediction.intent} (${prediction.confidence}) for: "${text}"`);
+
+        // ── Context-aware re-routing: if UNKNOWN and this looks like a follow-up ─
+        if (prediction.intent === "UNKNOWN" && ctxState.lastIntent && isFollowUp(text)) {
+            console.log(`[TG AI] Follow-up detected, overriding with lastIntent: ${ctxState.lastIntent}`);
+            prediction = { ...prediction, intent: ctxState.lastIntent as typeof prediction.intent };
+        }
 
         // ── BLOOD_INFO ────────────────────────────────────────────────────────
         if (prediction.intent === "BLOOD_INFO") {
-            const faq = findFaqAnswer(text);
+            // For follow-up messages, try combining previous query with current text
+            const queryText = (ctxState.lastIntent === "BLOOD_INFO" && ctxState.lastFaqQuery && isFollowUp(text))
+                ? ctxState.lastFaqQuery + " " + text
+                : text;
+            const faq = findFaqAnswer(queryText) || (queryText !== text ? findFaqAnswer(text) : null);
             if (faq) {
                 await sendTgMessage(chatId, faq.answer);
                 if (faq.quickReplies && faq.quickReplies.length > 0) {
                     const rows = [faq.quickReplies.slice(0, 2), faq.quickReplies.slice(2, 4)].filter(r => r.length > 0);
                     await sendTgInlineKeyboard(chatId, "আরো কিছু জানতে চান?", rows);
                 }
+                recordHistory(chatId, "bot", faq.answer);
+                updateState(chatId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
             } else {
-                await sendTgMessage(
-                    chatId,
-                    "🩸 রক্তদান সম্পর্কে আপনার প্রশ্নটি আরো স্পষ্ট করে লিখুন।\n\n" +
-                    "উদাহরণ:\n• রক্ত দেওয়ার বয়স কত?\n• কতদিন পর রক্ত দেওয়া যায়?\n• ট্যাটু করলে কি রক্ত দেওয়া যায়?\n• রক্ত দেওয়ার পর কি খাব?"
-                );
+                // If follow-up but no specific FAQ found, show related topics
+                if (ctxState.lastIntent === "BLOOD_INFO" && isFollowUp(text)) {
+                    await sendTgInlineKeyboard(
+                        chatId,
+                        "🩸 এ বিষয়ে আরো কী জানতে চান? নিচে বিষয় বেছে নিন:",
+                        [["রক্তদানের বয়স", "কতদিন পর পর দেওয়া যায়"], ["ট্যাটু ও পিয়ার্সিং", "রক্তদানের পর খাবার"], ["গর্ভাবস্থা ও রক্তদান", "প্রথমবার রক্তদান"]]
+                    );
+                } else {
+                    await sendTgMessage(
+                        chatId,
+                        "🩸 রক্তদান সম্পর্কে আপনার প্রশ্নটি আরো স্পষ্ট করে লিখুন।\n\n" +
+                        "উদাহরণ:\n• রক্ত দেওয়ার বয়স কত?\n• কতদিন পর রক্ত দেওয়া যায়?\n• ট্যাটু করলে কি রক্ত দেওয়া যায়?\n• রক্ত দেওয়ার পর কি খাব?"
+                    );
+                    updateState(chatId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
+                }
             }
             return true;
         }
@@ -298,6 +355,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 location: entities.location,
                 bagCount: entities.bagCount,
                 isUrgent: entities.isUrgent,
+                lastIntent: "FIND_BLOOD",
             });
             const fresh = getState(chatId);
             const resolvedCoords = fresh.location ? resolveCoordinates(fresh.location) : null;
@@ -326,6 +384,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
         // ── REGISTER_DONOR ────────────────────────────────────────────────────
         if (prediction.intent === "REGISTER_DONOR") {
             clearTgAiState(chatId);
+            updateState(chatId, { lastIntent: "REGISTER_DONOR" });
             // Trigger in-chat registration (username/firstName not available here; will use defaults)
             await startTgRegistration(chatId);
             return true;
@@ -334,6 +393,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
         // ── UPDATE_DONATION ───────────────────────────────────────────────────
         if (prediction.intent === "UPDATE_DONATION") {
             clearTgAiState(chatId);
+            updateState(chatId, { lastIntent: "UPDATE_DONATION" });
             await sendTgUrlButton(
                 chatId,
                 "শেষ রক্তদানের তারিখ আপডেট করতে ওয়েবসাইটে লগইন করুন:",
@@ -346,6 +406,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
         // ── REQUEST_BLOOD ─────────────────────────────────────────────────────
         if (prediction.intent === "REQUEST_BLOOD") {
             clearTgAiState(chatId);
+            updateState(chatId, { lastIntent: "REQUEST_BLOOD" });
             await sendTgUrlButton(
                 chatId,
                 "রক্তের জন্য আবেদন করতে নিচের বোতামে ক্লিক করুন:",
@@ -406,6 +467,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 `নিচের মেনু থেকে বেছে নিন 👇`,
                 [["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"], ["❓ সাহায্য", "🌐 ওয়েবসাইট"]]
             );
+            updateState(chatId, { lastIntent: "GREET" });
             return true;
         }
 
@@ -427,6 +489,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 "নিচের বোতামে ক্লিক করুন 👇",
                 [["🔍 রক্তদাতা খুঁজুন", "📝 ডোনার নিবন্ধন"], ["🔄 প্রোফাইল আপডেট", "📅 শেষ দান আপডেট"], ["🌐 ওয়েবসাইট"]]
             );
+            updateState(chatId, { lastIntent: "HELP" });
             return true;
         }
 
@@ -451,6 +514,8 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 const rows = [faq.quickReplies.slice(0, 2), faq.quickReplies.slice(2, 4)].filter(r => r.length > 0);
                 await sendTgInlineKeyboard(chatId, "আরো কিছু জানতে চান?", rows);
             }
+            recordHistory(chatId, "bot", faq.answer);
+            updateState(chatId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
             return true;
         }
 
