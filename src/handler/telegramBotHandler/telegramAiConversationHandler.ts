@@ -6,6 +6,7 @@
  */
 
 import { predictIntent } from "../facebookBotHandler/ai/intentClassifier";
+import { checkCustomRule } from "../facebookBotHandler/ai/customRuleChecker";
 import { bangladeshGeoData } from "../../utils/bangladeshGeoLoactionData";
 
 /** Build a display label for a location entity showing parent context */
@@ -295,6 +296,14 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                 }
                 return true;
             }
+        }
+
+        // ── Custom Rules: check dashboard-defined rules FIRST ─────────────────
+        const customReply = await checkCustomRule(text, "telegram");
+        if (customReply) {
+            await sendTgMessage(chatId, customReply);
+            recordHistory(chatId, "bot", customReply);
+            return true;
         }
 
         // ── Classify intent ───────────────────────────────────────────────────

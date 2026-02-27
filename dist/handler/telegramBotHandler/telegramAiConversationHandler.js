@@ -13,6 +13,7 @@ exports.clearTgAiState = clearTgAiState;
 exports.handleTgLocationSuggest = handleTgLocationSuggest;
 exports.handleTgAiMessage = handleTgAiMessage;
 const intentClassifier_1 = require("../facebookBotHandler/ai/intentClassifier");
+const customRuleChecker_1 = require("../facebookBotHandler/ai/customRuleChecker");
 const bangladeshGeoLoactionData_1 = require("../../utils/bangladeshGeoLoactionData");
 /** Build a display label for a location entity showing parent context */
 function buildLocationLabel(entity) {
@@ -236,6 +237,13 @@ async function handleTgAiMessage(chatId, text) {
                 }
                 return true;
             }
+        }
+        // ── Custom Rules: check dashboard-defined rules FIRST ─────────────────
+        const customReply = await (0, customRuleChecker_1.checkCustomRule)(text, "telegram");
+        if (customReply) {
+            await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, customReply);
+            recordHistory(chatId, "bot", customReply);
+            return true;
         }
         // ── Classify intent ───────────────────────────────────────────────────
         // Record user message for conversation history

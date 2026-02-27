@@ -26,6 +26,10 @@ const verifyIsSuperAdmin_1 = __importDefault(require("../../../handler/validatio
 const getTgBroadcastCount_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getTgBroadcastCount"));
 const sendTgBroadcast_1 = __importDefault(require("../../../controller/administrator/system/dashboard/sendTgBroadcast"));
 const getTgBroadcastLocations_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getTgBroadcastLocations"));
+const addBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/addBotRule"));
+const getBotRules_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/getBotRules"));
+const deleteBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/deleteBotRule"));
+const updateBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/updateBotRule"));
 const systemDashboardRoute = (0, express_1.Router)();
 const sliderUpload = (0, imageUpload_1.createImageUpload)('sliderImage', {
     maxWidth: 1000,
@@ -53,4 +57,9 @@ systemDashboardRoute.delete('/ai-training/:id', verifyJwt_1.default, verifyIsSup
 systemDashboardRoute.get('/tg-broadcast/locations', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getTgBroadcastLocations_1.default);
 systemDashboardRoute.get('/tg-broadcast/count', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getTgBroadcastCount_1.default);
 systemDashboardRoute.post('/tg-broadcast', verifyJwt_1.default, verifyIsSuperAdmin_1.default, sendTgBroadcast_1.default);
+// Custom Bot Rule routes (superAdmin only)
+systemDashboardRoute.get('/bot-rules', verifyJwt_1.default, verifyIsSuperAdmin_1.default, getBotRules_1.default);
+systemDashboardRoute.post('/bot-rules', verifyJwt_1.default, verifyIsSuperAdmin_1.default, addBotRule_1.default);
+systemDashboardRoute.put('/bot-rules/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, updateBotRule_1.default);
+systemDashboardRoute.delete('/bot-rules/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, deleteBotRule_1.default);
 exports.default = systemDashboardRoute;

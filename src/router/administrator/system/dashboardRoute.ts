@@ -21,6 +21,10 @@ import verifyIsSuperAdmin from "../../../handler/validation/verifyIsSuperAdmin";
 import getTgBroadcastCount from "../../../controller/administrator/system/dashboard/getTgBroadcastCount";
 import sendTgBroadcast from "../../../controller/administrator/system/dashboard/sendTgBroadcast";
 import getTgBroadcastLocations from "../../../controller/administrator/system/dashboard/getTgBroadcastLocations";
+import addBotRule    from "../../../controller/administrator/system/dashboard/botRules/addBotRule";
+import getBotRules   from "../../../controller/administrator/system/dashboard/botRules/getBotRules";
+import deleteBotRule from "../../../controller/administrator/system/dashboard/botRules/deleteBotRule";
+import updateBotRule from "../../../controller/administrator/system/dashboard/botRules/updateBotRule";
 
 const systemDashboardRoute = Router();
 
@@ -54,5 +58,11 @@ systemDashboardRoute.delete('/ai-training/:id',   verifyJwt, verifyIsSuperAdmin,
 systemDashboardRoute.get('/tg-broadcast/locations', verifyJwt, verifyIsSuperAdmin, getTgBroadcastLocations)
 systemDashboardRoute.get('/tg-broadcast/count',     verifyJwt, verifyIsSuperAdmin, getTgBroadcastCount)
 systemDashboardRoute.post('/tg-broadcast',          verifyJwt, verifyIsSuperAdmin, sendTgBroadcast)
+
+// Custom Bot Rule routes (superAdmin only)
+systemDashboardRoute.get('/bot-rules',         verifyJwt, verifyIsSuperAdmin, getBotRules)
+systemDashboardRoute.post('/bot-rules',        verifyJwt, verifyIsSuperAdmin, addBotRule)
+systemDashboardRoute.put('/bot-rules/:id',     verifyJwt, verifyIsSuperAdmin, updateBotRule)
+systemDashboardRoute.delete('/bot-rules/:id',  verifyJwt, verifyIsSuperAdmin, deleteBotRule)
 
 export default systemDashboardRoute;
