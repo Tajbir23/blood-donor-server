@@ -301,26 +301,45 @@ function keywordFallback(text: string): Prediction {
 
     if (hit(["রক্ত দরকার","রক্ত চাই","রক্তদাতা","blood needed","need blood",
               "blood donor","find blood","ডোনার দরকার","ডোনার খুঁজছি",
-              "রক্ত লাগবে","রক্ত খুঁজছি","blood urgently",
-              "a+","b+","o+","ab+","a-","b-","o-","ab-"])) {
+              "রক্ত লাগবে","রক্ত খুঁজছি","blood urgently","blood asap",
+              "find donor","search donor","nearest donor","blood bank",
+              "a+","b+","o+","ab+","a-","b-","o-","ab-",
+              "donor needed","blood transfusion","রক্তদাতা খুঁজছি"])) {
         return { intent: "FIND_BLOOD", confidence: 0.8, scores: { ...dummy, FIND_BLOOD: 0.8 } };
     }
     if (hit(["রক্ত দেওয়ার বয়স","কতদিন পর","ট্যাটু","tattoo","eligib",
               "রক্ত দিতে পারব","কতবার","থ্যালাসেমিয়া","thalassemia",
-              "ডায়াবেটিস","pregnancy","গর্ভাবস্থা","রক্ত দেওয়ার পর"])) {
+              "ডায়াবেটিস","pregnancy","গর্ভাবস্থা","রক্ত দেওয়ার পর",
+              "hemoglobin","হিমোগ্লোবিন","vaccine","ভ্যাকসিন","covid",
+              "period","মাসিক","smoking","alcohol","fever","cold",
+              "blood info","donation process","first time","প্রথমবার",
+              "কত রক্ত","how much blood","platelet","প্লাটিলেট",
+              "iron","anemia","রক্তস্বল্পতা","রক্তদানের উপকার"])) {
         return { intent: "BLOOD_INFO", confidence: 0.8, scores: { ...dummy, BLOOD_INFO: 0.8 } };
     }
     if (hit(["register","donate blood","become donor","রেজিস্ট্রেশন",
-              "রক্তদান করতে চাই","ডোনার হতে চাই","নিবন্ধন"])) {
+              "রক্তদান করতে চাই","ডোনার হতে চাই","নিবন্ধন",
+              "donor signup","sign up","join as donor","add me"])) {
         return { intent: "REGISTER_DONOR", confidence: 0.8, scores: { ...dummy, REGISTER_DONOR: 0.8 } };
     }
-    if (hit(["update","donated today","gave blood","আপডেট","রক্ত দিয়েছি"])) {
+    if (hit(["update","donated today","gave blood","আপডেট","রক্ত দিয়েছি",
+              "edit profile","profile update","change phone","last donation",
+              "আজ রক্ত দিলাম","গতকাল রক্ত দিয়েছি"])) {
         return { intent: "UPDATE_DONATION", confidence: 0.8, scores: { ...dummy, UPDATE_DONATION: 0.8 } };
     }
-    if (hit(["help","menu","সাহায্য","মেনু"])) {
+    if (hit(["request blood","blood request","রক্ত আবেদন","আবেদন করতে চাই"])) {
+        return { intent: "REQUEST_BLOOD", confidence: 0.8, scores: { ...dummy, REQUEST_BLOOD: 0.8 } };
+    }
+    if (hit(["thank","thanks","ধন্যবাদ","bye","goodbye","শুকরিয়া",
+              "jazakallah","আল্লাহ হাফেজ","বাই","আবার কথা হবে"])) {
+        return { intent: "THANK_YOU", confidence: 0.8, scores: { ...dummy, THANK_YOU: 0.8 } };
+    }
+    if (hit(["help","menu","সাহায্য","মেনু","commands","options","guide","বিস্তারিত"])) {
         return { intent: "HELP", confidence: 0.8, scores: { ...dummy, HELP: 0.8 } };
     }
-    if (hit(["hello","hi","hey","হ্যালো","হাই","সালাম"])) {
+    if (hit(["hello","hi","hey","হ্যালো","হাই","সালাম","assalamu","walaikum",
+              "good morning","good evening","good night","কেমন আছ","কি খবর",
+              "নমস্কার","আদাব","হেই"])) {
         return { intent: "GREET", confidence: 0.8, scores: { ...dummy, GREET: 0.8 } };
     }
 
