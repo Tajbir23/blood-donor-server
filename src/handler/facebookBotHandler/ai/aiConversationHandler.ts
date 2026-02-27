@@ -15,6 +15,7 @@
  */
 
 import { predictIntent } from "./intentClassifier";
+import { checkCustomRule } from "./customRuleChecker";
 import {
     extractEntities,
     extractBloodGroup,
@@ -42,9 +43,11 @@ interface AiConversationState {
     location: LocationEntity | null;
     bagCount: number | null;
     isUrgent: boolean;
-    /** Waiting for user to provide: 'blood_group' | 'location' | null */
     awaitingInput: "blood_group" | "location" | null;
     lastUpdated: number;
+    history: Array<{role: "user" | "bot"; text: string}>;
+    lastIntent: string | null;
+    lastFaqQuery: string | null;
 }
 
 // In-memory state per user (psId → state)
@@ -64,6 +67,7 @@ function getState(psId: string): AiConversationState {
         isUrgent: false,
         awaitingInput: null,
         lastUpdated: Date.now(),
+        history: [], lastIntent: null, lastFaqQuery: null,
     };
     aiStateMap.set(psId, fresh);
     return fresh;
@@ -76,7 +80,31 @@ function updateState(psId: string, updates: Partial<AiConversationState>) {
 }
 
 function clearState(psId: string) {
-    aiStateMap.delete(psId);
+    // Preserve conversation context while resetting the flow state
+    const existing = aiStateMap.get(psId);
+    const fresh: AiConversationState = {
+        intent: null, bloodGroup: null, location: null,
+        bagCount: null, isUrgent: false, awaitingInput: null,
+        lastUpdated: Date.now(),
+        history: existing?.history ?? [],
+        lastIntent: existing?.lastIntent ?? null,
+        lastFaqQuery: existing?.lastFaqQuery ?? null,
+    };
+    aiStateMap.set(psId, fresh);
+}
+
+function recordHistory(psId: string, role: "user" | "bot", text: string) {
+    const state = getState(psId);
+    state.history.push({ role, text: text.substring(0, 200) });
+    if (state.history.length > 8) state.history.splice(0, state.history.length - 8);
+    aiStateMap.set(psId, state);
+}
+
+function isFollowUp(text: string): boolean {
+    const t = text.trim();
+    if (t.length < 25 && /^(আরো|আরও|বিস্তারিত|বিস্তার|তাহলে|কেন|কীভাবে|কিভাবে|তারপর|আর কি|এরপর|ok|okay|ঠিক আছে|আচ্ছা|হ্যাঁ|yes|more|else|further|explain|got it|তারপর কি|আর বলো|বলো|কি করব|এখন কি করব)/i.test(t)) return true;
+    if (/আরো (কিছু|জান|বল)|আরও (কিছু|জান|বল)|বিস্তারিত (বলো|জানতে)|tell me more|more (info|detail)|explain (more|further)/i.test(t)) return true;
+    return false;
 }
 
 // ── Helper: load user's registered profile location ───────────────────────────
@@ -214,6 +242,17 @@ export async function handleAiMessage(
     try {
         const state = getState(psId);
 
+        // ── Custom Rules: check dashboard-defined rules FIRST ─────────────────
+        const customReply = await checkCustomRule(text, "facebook");
+        if (customReply) {
+            await sendMessageToFbUser(psId, customReply);
+            recordHistory(psId, "bot", customReply);
+            return true;
+        }
+
+        // Record user message
+        recordHistory(psId, "user", text);
+
         // ── If we're waiting for specific input, handle it directly ──────────
         if (state.awaitingInput === "blood_group") {
             const bg = extractBloodGroup(text);
@@ -238,7 +277,7 @@ export async function handleAiMessage(
                 // 3. Ask for location
                 await sendMessageToFbUser(
                     psId,
-                    `আপনার রক্তের গ্রুপ ${bg} বোঝা গেছে। এখন আপনার এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`
+                    `আপনার রক্তের গ্রুপ ${bg} বোঝা গেছে। এখন আপনার উপজেলার নাম বলুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি):`
                 );
                 updateState(psId, { awaitingInput: "location" });
                 return true;
@@ -291,7 +330,7 @@ export async function handleAiMessage(
                 } else {
                     await sendMessageToFbUser(
                         psId,
-                        "এলাকার নাম বুঝতে পারিনি। অনুগ্রহ করে বাংলায় বা ইংরেজিতে এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, Chittagong):"
+                        "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে উপজেলার নাম বলুন (যেমন: মিরপুর, গুলশান, Chittagong):"
                     );
                 }
                 return true;
@@ -299,17 +338,33 @@ export async function handleAiMessage(
         }
 
         // ── Fresh message: classify intent ────────────────────────────────────
-        const prediction = await predictIntent(text);
+        const ctxState = getState(psId);
+        let prediction = await predictIntent(text);
         console.log(`[AI] Intent: ${prediction.intent} (conf: ${prediction.confidence}) for: "${text}"`);
+
+        // Follow-up context: if UNKNOWN and short follow-up phrase, reuse last intent
+        if (prediction.intent === "UNKNOWN" && ctxState.lastIntent && isFollowUp(text)) {
+            prediction = { ...prediction, intent: ctxState.lastIntent as typeof prediction.intent };
+        }
 
         // ── BLOOD_INFO – FAQ / general questions ──────────────────────────────
         if (prediction.intent === "BLOOD_INFO") {
-            const faqEntry = findFaqAnswer(text);
+            const queryText = (ctxState.lastIntent === "BLOOD_INFO" && ctxState.lastFaqQuery && isFollowUp(text))
+                ? ctxState.lastFaqQuery + " " + text
+                : text;
+            const faqEntry = findFaqAnswer(queryText) || (queryText !== text ? findFaqAnswer(text) : null);
             if (faqEntry) {
                 await sendMessageToFbUser(psId, faqEntry.answer);
+                recordHistory(psId, "bot", faqEntry.answer);
                 if (faqEntry.quickReplies && faqEntry.quickReplies.length > 0) {
                     await quickReply(psId, "আরো কিছু জানতে চান?", faqEntry.quickReplies);
                 }
+                updateState(psId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
+            } else if (ctxState.lastIntent === "BLOOD_INFO" && isFollowUp(text)) {
+                await quickReply(psId, "🩸 এ বিষয়ে আরো কী জানতে চান?", [
+                    "রক্তদানের বয়স", "কতদিন পর পর", "ট্যাটু ও পিয়ার্সিং",
+                    "রক্তদানের পর খাবার", "ধূমপান ও মদ্যপান",
+                ]);
             } else {
                 await sendMessageToFbUser(
                     psId,
@@ -323,6 +378,7 @@ export async function handleAiMessage(
                 await quickReply(psId, "অথবা মেনু থেকে বেছে নিন:", [
                     "Find Blood", "Register", "Donate Blood",
                 ]);
+                updateState(psId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
             }
             return true;
         }
@@ -338,6 +394,7 @@ export async function handleAiMessage(
                 location: entities.location,
                 bagCount: entities.bagCount,
                 isUrgent: entities.isUrgent,
+                lastIntent: "FIND_BLOOD",
             });
 
             const freshState = getState(psId);
@@ -391,7 +448,7 @@ export async function handleAiMessage(
                 // No profile — ask for location
                 await sendMessageToFbUser(
                     psId,
-                    `${urgentPrefix}আপনি ${freshState.bloodGroup} রক্তের ডোনার খুঁজছেন${bagHint}। আপনার এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`
+                    `${urgentPrefix}আপনি ${freshState.bloodGroup} রক্তের ডোনার খুঁজছেন${bagHint}। আপনার উপজেলার নাম বলুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি):`
                 );
                 updateState(psId, { awaitingInput: "location" });
                 return true;
@@ -438,9 +495,30 @@ export async function handleAiMessage(
         // ── GREET ─────────────────────────────────────────────────────────────
         if (prediction.intent === "GREET") {
             clearState(psId);
+            updateState(psId, { lastIntent: "GREET" });
+
+            const lowerText = text.toLowerCase().trim();
+            let greetMsg: string;
+
+            if (/assalamu|assalam|salam|আস্সালামু|সালাম/.test(lowerText)) {
+                greetMsg = "ওয়া আলাইকুমদুস সালাম! আলহামদুলিল্লাহ, ভালো আছি! 😊 আমি LifeDrop Bot — বাংলাদেশে রক্তদাতা খোঁজার সহায়ক।";
+            } else if (/walaikum|ওয়ালাইকুম/.test(lowerText)) {
+                greetMsg = "আলহামদুলিল্লাহ, ভালো আছি! আপনিও ভালো থাকুন। 😊";
+            } else if (/কেমন আছ|কি খবর|how are you/.test(lowerText)) {
+                greetMsg = "আলহামদুলিল্লাহ, ভালো আছি! আপনি কেমন আছেন? 😊";
+            } else if (/good morning|সুপ্রভাত/.test(lowerText)) {
+                greetMsg = "শুভ সকাল! 🌅 আজকে কীভাবে সাহায্য করতে পারি?";
+            } else {
+                const opts = [
+                    "👋 হ্যালো! আমি LifeDrop Bot — বাংলাদেশে রক্তদাতা খোঁজার সহায়ক।",
+                    "😊 স্বাগতম্! আপনার সাথে কথা বলতে পেরে ভালো লাগছে!",
+                ];
+                greetMsg = opts[Math.floor(Math.random() * opts.length)];
+            }
+
             await quickReply(
                 psId,
-                "👋 আস্সালামু আলাইকুম! আমি LifeDrop Bot।\n\nবাংলা বা ইংরেজিতে সরাসরি লিখুন, যেমন:\n\"A+ রক্ত দরকার ঢাকায়\"\n\"রক্তদানের বয়স কত?\"\n\nঅথবা নিচের মেনু থেকে বেছে নিন:",
+                `${greetMsg}\n\nবাংলা বা ইংরেজিতে সরাসরি লিখুন:\n"ঢাকায় A+ রক্ত দরকার"\n"রক্তদানের বয়স কত?"\n\nঅথবা মেনু থেকে বেছে নিন:`,
                 ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]
             );
             return true;
@@ -448,8 +526,7 @@ export async function handleAiMessage(
 
         // ── HELP ──────────────────────────────────────────────────────────────
         if (prediction.intent === "HELP") {
-            clearState(psId);
-            await sendMessageToFbUser(
+            clearState(psId);            updateState(psId, { lastIntent: "HELP" });            await sendMessageToFbUser(
                 psId,
                 "🩸 LifeDrop Bot যা করতে পারে:\n\n" +
                 "🔍 রক্তদাতা খোঁজা:\n" +
@@ -469,7 +546,7 @@ export async function handleAiMessage(
 
         // ── THANK_YOU ──────────────────────────────────────────────────────
         if (prediction.intent === "THANK_YOU") {
-            clearState(psId);
+
             const thankReplies = [
                 "😊 স্বাগতম! আবার কোনো সাহায্য লাগলে বলবেন।",
                 "🩸 আপনার সেবায় সদা প্রস্তুত! আল্লাহ হাফেজ।",
@@ -484,9 +561,11 @@ export async function handleAiMessage(
         const faqEntry = findFaqAnswer(text);
         if (faqEntry) {
             await sendMessageToFbUser(psId, faqEntry.answer);
+            recordHistory(psId, "bot", faqEntry.answer);
             if (faqEntry.quickReplies && faqEntry.quickReplies.length > 0) {
                 await quickReply(psId, "আরো কিছু জানতে চান?", faqEntry.quickReplies);
             }
+            updateState(psId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
             return true;
         }
 

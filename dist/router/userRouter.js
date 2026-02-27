@@ -21,6 +21,10 @@ const searchDonar_1 = __importDefault(require("../controller/user/searchDonar"))
 const updateProfileImage_1 = __importDefault(require("../controller/user/updateProfileImage"));
 const refreshToken_1 = __importDefault(require("../controller/user/refreshToken"));
 const reportUser_1 = __importDefault(require("../controller/user/reportUser"));
+const changePassword_1 = __importDefault(require("../controller/user/changePassword"));
+const updateProfile_1 = __importDefault(require("../controller/user/updateProfile"));
+const deleteAccount_1 = __importDefault(require("../controller/user/deleteAccount"));
+const updateNotificationPreferences_1 = __importDefault(require("../controller/user/updateNotificationPreferences"));
 const userRouter = (0, express_1.Router)();
 // Using the optimized profileImageUpload middleware with preset dimensions and quality
 userRouter.post('/register', imageUpload_1.profileImageUpload, createUser_1.default);
@@ -37,4 +41,8 @@ userRouter.get("/search-users", searchDonar_1.default);
 userRouter.put('/update-profile-image', verifyJwt_1.default, imageUpload_1.profileImageUpload, updateProfileImage_1.default);
 userRouter.get('/refresh-token', refreshToken_1.default);
 userRouter.post('/report', verifyJwt_1.default, reportUser_1.default);
+userRouter.put('/change-password', verifyJwt_1.default, changePassword_1.default);
+userRouter.put('/update-profile', verifyJwt_1.default, updateProfile_1.default);
+userRouter.delete('/delete-account', verifyJwt_1.default, deleteAccount_1.default);
+userRouter.put('/notification-preferences', verifyJwt_1.default, updateNotificationPreferences_1.default);
 exports.default = userRouter;

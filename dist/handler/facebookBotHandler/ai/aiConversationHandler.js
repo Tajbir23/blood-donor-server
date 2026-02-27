@@ -54,6 +54,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleAiMessage = handleAiMessage;
 exports.clearAiState = clearAiState;
 const intentClassifier_1 = require("./intentClassifier");
+const customRuleChecker_1 = require("./customRuleChecker");
 const entityExtractor_1 = require("./entityExtractor");
 const faqKnowledgeBase_1 = require("./faqKnowledgeBase");
 const fbUserSchema_1 = __importDefault(require("../../../models/user/fbUserSchema"));
@@ -77,6 +78,7 @@ function getState(psId) {
         isUrgent: false,
         awaitingInput: null,
         lastUpdated: Date.now(),
+        history: [], lastIntent: null, lastFaqQuery: null,
     };
     aiStateMap.set(psId, fresh);
     return fresh;
@@ -87,7 +89,33 @@ function updateState(psId, updates) {
     aiStateMap.set(psId, state);
 }
 function clearState(psId) {
-    aiStateMap.delete(psId);
+    var _a, _b, _c;
+    // Preserve conversation context while resetting the flow state
+    const existing = aiStateMap.get(psId);
+    const fresh = {
+        intent: null, bloodGroup: null, location: null,
+        bagCount: null, isUrgent: false, awaitingInput: null,
+        lastUpdated: Date.now(),
+        history: (_a = existing === null || existing === void 0 ? void 0 : existing.history) !== null && _a !== void 0 ? _a : [],
+        lastIntent: (_b = existing === null || existing === void 0 ? void 0 : existing.lastIntent) !== null && _b !== void 0 ? _b : null,
+        lastFaqQuery: (_c = existing === null || existing === void 0 ? void 0 : existing.lastFaqQuery) !== null && _c !== void 0 ? _c : null,
+    };
+    aiStateMap.set(psId, fresh);
+}
+function recordHistory(psId, role, text) {
+    const state = getState(psId);
+    state.history.push({ role, text: text.substring(0, 200) });
+    if (state.history.length > 8)
+        state.history.splice(0, state.history.length - 8);
+    aiStateMap.set(psId, state);
+}
+function isFollowUp(text) {
+    const t = text.trim();
+    if (t.length < 25 && /^(আরো|আরও|বিস্তারিত|বিস্তার|তাহলে|কেন|কীভাবে|কিভাবে|তারপর|আর কি|এরপর|ok|okay|ঠিক আছে|আচ্ছা|হ্যাঁ|yes|more|else|further|explain|got it|তারপর কি|আর বলো|বলো|কি করব|এখন কি করব)/i.test(t))
+        return true;
+    if (/আরো (কিছু|জান|বল)|আরও (কিছু|জান|বল)|বিস্তারিত (বলো|জানতে)|tell me more|more (info|detail)|explain (more|further)/i.test(t))
+        return true;
+    return false;
 }
 // ── Helper: load user's registered profile location ───────────────────────────
 async function getProfileLocation(psId) {
@@ -182,6 +210,15 @@ async function handleAiMessage(psId, text) {
      */
     try {
         const state = getState(psId);
+        // ── Custom Rules: check dashboard-defined rules FIRST ─────────────────
+        const customReply = await (0, customRuleChecker_1.checkCustomRule)(text, "facebook");
+        if (customReply) {
+            await (0, sendMessageToFbUser_1.default)(psId, customReply);
+            recordHistory(psId, "bot", customReply);
+            return true;
+        }
+        // Record user message
+        recordHistory(psId, "user", text);
         // ── If we're waiting for specific input, handle it directly ──────────
         if (state.awaitingInput === "blood_group") {
             const bg = (0, entityExtractor_1.extractBloodGroup)(text);
@@ -204,7 +241,7 @@ async function handleAiMessage(psId, text) {
                     return true;
                 }
                 // 3. Ask for location
-                await (0, sendMessageToFbUser_1.default)(psId, `আপনার রক্তের গ্রুপ ${bg} বোঝা গেছে। এখন আপনার এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`);
+                await (0, sendMessageToFbUser_1.default)(psId, `আপনার রক্তের গ্রুপ ${bg} বোঝা গেছে। এখন আপনার উপজেলার নাম বলুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি):`);
                 updateState(psId, { awaitingInput: "location" });
                 return true;
             }
@@ -242,22 +279,38 @@ async function handleAiMessage(psId, text) {
                     await (0, quickReply_1.default)(psId, "এলাকাটি সঠিকভাবে বোঝা যায়নি। এগুলোর মধ্যে কোনটি বোঝাতে চেয়েছেন?", names);
                 }
                 else {
-                    await (0, sendMessageToFbUser_1.default)(psId, "এলাকার নাম বুঝতে পারিনি। অনুগ্রহ করে বাংলায় বা ইংরেজিতে এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, Chittagong):");
+                    await (0, sendMessageToFbUser_1.default)(psId, "এলাকার নাম বুঝতে পারিনি। বাংলায় বা ইংরেজিতে উপজেলার নাম বলুন (যেমন: মিরপুর, গুলশান, Chittagong):");
                 }
                 return true;
             }
         }
         // ── Fresh message: classify intent ────────────────────────────────────
-        const prediction = await (0, intentClassifier_1.predictIntent)(text);
+        const ctxState = getState(psId);
+        let prediction = await (0, intentClassifier_1.predictIntent)(text);
         console.log(`[AI] Intent: ${prediction.intent} (conf: ${prediction.confidence}) for: "${text}"`);
+        // Follow-up context: if UNKNOWN and short follow-up phrase, reuse last intent
+        if (prediction.intent === "UNKNOWN" && ctxState.lastIntent && isFollowUp(text)) {
+            prediction = { ...prediction, intent: ctxState.lastIntent };
+        }
         // ── BLOOD_INFO – FAQ / general questions ──────────────────────────────
         if (prediction.intent === "BLOOD_INFO") {
-            const faqEntry = (0, faqKnowledgeBase_1.findFaqAnswer)(text);
+            const queryText = (ctxState.lastIntent === "BLOOD_INFO" && ctxState.lastFaqQuery && isFollowUp(text))
+                ? ctxState.lastFaqQuery + " " + text
+                : text;
+            const faqEntry = (0, faqKnowledgeBase_1.findFaqAnswer)(queryText) || (queryText !== text ? (0, faqKnowledgeBase_1.findFaqAnswer)(text) : null);
             if (faqEntry) {
                 await (0, sendMessageToFbUser_1.default)(psId, faqEntry.answer);
+                recordHistory(psId, "bot", faqEntry.answer);
                 if (faqEntry.quickReplies && faqEntry.quickReplies.length > 0) {
                     await (0, quickReply_1.default)(psId, "আরো কিছু জানতে চান?", faqEntry.quickReplies);
                 }
+                updateState(psId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
+            }
+            else if (ctxState.lastIntent === "BLOOD_INFO" && isFollowUp(text)) {
+                await (0, quickReply_1.default)(psId, "🩸 এ বিষয়ে আরো কী জানতে চান?", [
+                    "রক্তদানের বয়স", "কতদিন পর পর", "ট্যাটু ও পিয়ার্সিং",
+                    "রক্তদানের পর খাবার", "ধূমপান ও মদ্যপান",
+                ]);
             }
             else {
                 await (0, sendMessageToFbUser_1.default)(psId, "🩸 রক্তদান সম্পর্কে আপনার প্রশ্নটি আরো স্পষ্ট করে লিখুন।\n\n" +
@@ -269,6 +322,7 @@ async function handleAiMessage(psId, text) {
                 await (0, quickReply_1.default)(psId, "অথবা মেনু থেকে বেছে নিন:", [
                     "Find Blood", "Register", "Donate Blood",
                 ]);
+                updateState(psId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
             }
             return true;
         }
@@ -282,6 +336,7 @@ async function handleAiMessage(psId, text) {
                 location: entities.location,
                 bagCount: entities.bagCount,
                 isUrgent: entities.isUrgent,
+                lastIntent: "FIND_BLOOD",
             });
             const freshState = getState(psId);
             // ── Resolve coordinates: text-extracted location takes priority ──
@@ -312,7 +367,7 @@ async function handleAiMessage(psId, text) {
                     return true;
                 }
                 // No profile — ask for location
-                await (0, sendMessageToFbUser_1.default)(psId, `${urgentPrefix}আপনি ${freshState.bloodGroup} রক্তের ডোনার খুঁজছেন${bagHint}। আপনার এলাকার নাম বলুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`);
+                await (0, sendMessageToFbUser_1.default)(psId, `${urgentPrefix}আপনি ${freshState.bloodGroup} রক্তের ডোনার খুঁজছেন${bagHint}। আপনার উপজেলার নাম বলুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি):`);
                 updateState(psId, { awaitingInput: "location" });
                 return true;
             }
@@ -339,12 +394,35 @@ async function handleAiMessage(psId, text) {
         // ── GREET ─────────────────────────────────────────────────────────────
         if (prediction.intent === "GREET") {
             clearState(psId);
-            await (0, quickReply_1.default)(psId, "👋 আস্সালামু আলাইকুম! আমি LifeDrop Bot।\n\nবাংলা বা ইংরেজিতে সরাসরি লিখুন, যেমন:\n\"A+ রক্ত দরকার ঢাকায়\"\n\"রক্তদানের বয়স কত?\"\n\nঅথবা নিচের মেনু থেকে বেছে নিন:", ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]);
+            updateState(psId, { lastIntent: "GREET" });
+            const lowerText = text.toLowerCase().trim();
+            let greetMsg;
+            if (/assalamu|assalam|salam|আস্সালামু|সালাম/.test(lowerText)) {
+                greetMsg = "ওয়া আলাইকুমদুস সালাম! আলহামদুলিল্লাহ, ভালো আছি! 😊 আমি LifeDrop Bot — বাংলাদেশে রক্তদাতা খোঁজার সহায়ক।";
+            }
+            else if (/walaikum|ওয়ালাইকুম/.test(lowerText)) {
+                greetMsg = "আলহামদুলিল্লাহ, ভালো আছি! আপনিও ভালো থাকুন। 😊";
+            }
+            else if (/কেমন আছ|কি খবর|how are you/.test(lowerText)) {
+                greetMsg = "আলহামদুলিল্লাহ, ভালো আছি! আপনি কেমন আছেন? 😊";
+            }
+            else if (/good morning|সুপ্রভাত/.test(lowerText)) {
+                greetMsg = "শুভ সকাল! 🌅 আজকে কীভাবে সাহায্য করতে পারি?";
+            }
+            else {
+                const opts = [
+                    "👋 হ্যালো! আমি LifeDrop Bot — বাংলাদেশে রক্তদাতা খোঁজার সহায়ক।",
+                    "😊 স্বাগতম্! আপনার সাথে কথা বলতে পেরে ভালো লাগছে!",
+                ];
+                greetMsg = opts[Math.floor(Math.random() * opts.length)];
+            }
+            await (0, quickReply_1.default)(psId, `${greetMsg}\n\nবাংলা বা ইংরেজিতে সরাসরি লিখুন:\n"ঢাকায় A+ রক্ত দরকার"\n"রক্তদানের বয়স কত?"\n\nঅথবা মেনু থেকে বেছে নিন:`, ["Find Blood", "Register", "Donate Blood", "Update Last Donation", "Request for Blood"]);
             return true;
         }
         // ── HELP ──────────────────────────────────────────────────────────────
         if (prediction.intent === "HELP") {
             clearState(psId);
+            updateState(psId, { lastIntent: "HELP" });
             await (0, sendMessageToFbUser_1.default)(psId, "🩸 LifeDrop Bot যা করতে পারে:\n\n" +
                 "🔍 রক্তদাতা খোঁজা:\n" +
                 "   \"A+ রক্ত দরকার ঢাকায়\"\n" +
@@ -361,7 +439,6 @@ async function handleAiMessage(psId, text) {
         }
         // ── THANK_YOU ──────────────────────────────────────────────────────
         if (prediction.intent === "THANK_YOU") {
-            clearState(psId);
             const thankReplies = [
                 "😊 স্বাগতম! আবার কোনো সাহায্য লাগলে বলবেন।",
                 "🩸 আপনার সেবায় সদা প্রস্তুত! আল্লাহ হাফেজ।",
@@ -375,9 +452,11 @@ async function handleAiMessage(psId, text) {
         const faqEntry = (0, faqKnowledgeBase_1.findFaqAnswer)(text);
         if (faqEntry) {
             await (0, sendMessageToFbUser_1.default)(psId, faqEntry.answer);
+            recordHistory(psId, "bot", faqEntry.answer);
             if (faqEntry.quickReplies && faqEntry.quickReplies.length > 0) {
                 await (0, quickReply_1.default)(psId, "আরো কিছু জানতে চান?", faqEntry.quickReplies);
             }
+            updateState(psId, { lastIntent: "BLOOD_INFO", lastFaqQuery: text });
             return true;
         }
         // Last resort – send website link so user never hits a dead end

@@ -30,6 +30,7 @@ const addBotRule_1 = __importDefault(require("../../../controller/administrator/
 const getBotRules_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/getBotRules"));
 const deleteBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/deleteBotRule"));
 const updateBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/updateBotRule"));
+const getAllDonations_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getAllDonations"));
 const systemDashboardRoute = (0, express_1.Router)();
 const sliderUpload = (0, imageUpload_1.createImageUpload)('sliderImage', {
     maxWidth: 1000,
@@ -62,4 +63,6 @@ systemDashboardRoute.get('/bot-rules', verifyJwt_1.default, verifyIsSuperAdmin_1
 systemDashboardRoute.post('/bot-rules', verifyJwt_1.default, verifyIsSuperAdmin_1.default, addBotRule_1.default);
 systemDashboardRoute.put('/bot-rules/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, updateBotRule_1.default);
 systemDashboardRoute.delete('/bot-rules/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, deleteBotRule_1.default);
+// Donation History routes (admin)
+systemDashboardRoute.get('/donations', verifyJwt_1.default, verifyIsAdmin_1.default, getAllDonations_1.default);
 exports.default = systemDashboardRoute;
