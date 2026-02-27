@@ -301,10 +301,13 @@ function keywordFallback(text: string): Prediction {
 
     if (hit(["রক্ত দরকার","রক্ত চাই","রক্তদাতা","blood needed","need blood",
               "blood donor","find blood","ডোনার দরকার","ডোনার খুঁজছি",
-              "রক্ত লাগবে","রক্ত খুঁজছি","blood urgently","blood asap",
+              "রক্ত লাগবে","রক্ত খুঁজছি","রক্ত খুঁজ","রক্ত খুঁজে",
+              "blood urgently","blood asap",
               "find donor","search donor","nearest donor","blood bank",
               "a+","b+","o+","ab+","a-","b-","o-","ab-",
-              "donor needed","blood transfusion","রক্তদাতা খুঁজছি"])) {
+              "donor needed","blood transfusion","রক্তদাতা খুঁজছি",
+              "আশেপাশে রক্ত","কাছে রক্ত","এলাকায় রক্ত","রক্ত পাবো",
+              "রক্ত পাব","রক্তদাতা আছে","ডোনার আছে"])) {
         return { intent: "FIND_BLOOD", confidence: 0.8, scores: { ...dummy, FIND_BLOOD: 0.8 } };
     }
     if (hit(["রক্ত দেওয়ার বয়স","কতদিন পর","ট্যাটু","tattoo","eligib",
@@ -331,7 +334,10 @@ function keywordFallback(text: string): Prediction {
         return { intent: "REQUEST_BLOOD", confidence: 0.8, scores: { ...dummy, REQUEST_BLOOD: 0.8 } };
     }
     if (hit(["thank","thanks","ধন্যবাদ","bye","goodbye","শুকরিয়া",
-              "jazakallah","আল্লাহ হাফেজ","বাই","আবার কথা হবে"])) {
+              "jazakallah","আল্লাহ হাফেজ","বাই","আবার কথা হবে",
+              "ঠিক আছে","ঠিকাছে","আচ্ছা","আচ্ছা ঠিক আছে",
+              "ok","okay","ওকে","বুঝেছি","বুঝলাম","পেয়েছি",
+              "হয়েছে","দরকার নেই","no thanks","it's ok","নো থ্যাংকস"])) {
         return { intent: "THANK_YOU", confidence: 0.8, scores: { ...dummy, THANK_YOU: 0.8 } };
     }
     if (hit(["help","menu","সাহায্য","মেনু","commands","options","guide","বিস্তারিত"])) {

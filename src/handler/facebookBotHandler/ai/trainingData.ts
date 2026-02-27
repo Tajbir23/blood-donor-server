@@ -429,6 +429,34 @@ export const trainingData: TrainingSample[] = [
     { text: "post a blood request online",                                        intent: "REQUEST_BLOOD" },
     { text: "how to request blood",                                               intent: "REQUEST_BLOOD" },
     { text: "fill blood request form",                                            intent: "REQUEST_BLOOD" },
+
+    //  FIND_BLOOD (Bengali location-aware) 
+    { text: "আমার এলাকার আশেপাশে রক্ত খুঁজে দাও",                              intent: "FIND_BLOOD" },
+    { text: "আশেপাশে রক্তদাতা আছে কি",                                          intent: "FIND_BLOOD" },
+    { text: "কাছে রক্ত পাওয়া যাবে",                                              intent: "FIND_BLOOD" },
+    { text: "কাছাকাছি রক্তদাতা খুঁজছি",                                          intent: "FIND_BLOOD" },
+    { text: "রক্ত খুঁজে দাও",                                                    intent: "FIND_BLOOD" },
+    { text: "রক্ত দরকার এখনই",                                                   intent: "FIND_BLOOD" },
+    { text: "আমার কাছের ডোনার দেখাও",                                            intent: "FIND_BLOOD" },
+    { text: "এই এলাকায় রক্তদাতা আছে",                                            intent: "FIND_BLOOD" },
+    { text: "রক্তদাতা পাচ্ছি না",                                                intent: "FIND_BLOOD" },
+    { text: "রক্তের জন্য ডোনার লাগবে",                                           intent: "FIND_BLOOD" },
+
+    //  THANK_YOU (Bengali acknowledgements) 
+    { text: "ঠিক আছে",                                                           intent: "THANK_YOU" },
+    { text: "ঠিকআছে",                                                            intent: "THANK_YOU" },
+    { text: "আচ্ছা",                                                              intent: "THANK_YOU" },
+    { text: "আচ্ছা ঠিক আছে",                                                     intent: "THANK_YOU" },
+    { text: "বুঝেছি",                                                             intent: "THANK_YOU" },
+    { text: "বুঝলাম",                                                             intent: "THANK_YOU" },
+    { text: "পেয়েছি",                                                             intent: "THANK_YOU" },
+    { text: "হয়েছে",                                                              intent: "THANK_YOU" },
+    { text: "দরকার নেই",                                                          intent: "THANK_YOU" },
+    { text: "ok",                                                                 intent: "THANK_YOU" },
+    { text: "okay",                                                               intent: "THANK_YOU" },
+    { text: "ok thanks",                                                          intent: "THANK_YOU" },
+    { text: "alright",                                                            intent: "THANK_YOU" },
+    { text: "got it thanks",                                                      intent: "THANK_YOU" },
 ];
 
 export const INTENTS: Intent[] = [
