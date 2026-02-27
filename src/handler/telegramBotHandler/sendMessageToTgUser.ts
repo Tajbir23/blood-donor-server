@@ -4,7 +4,7 @@
  *
  * Every send function uses a typewriter effect:
  *   1. Sends "▌" immediately (so user sees something right away)
- *   2. Progressively edits the message word-by-word (up to 15 frames, 120 ms apart)
+ *   2. Progressively edits the message word-by-word (80 ms per word)
  *   3. Final edit applies the full HTML text (with any reply_markup)
  * This produces a ChatGPT-like streaming/typewriter feel in every conversation.
  */
@@ -17,7 +17,7 @@ const tgApi = () =>
 
 // ── Typewriter helpers ────────────────────────────────────────────────────────
 
-const TYPEWRITER_INTERVAL_MS = 25;    // ms between frames
+const TYPEWRITER_INTERVAL_MS = 80;    // ms between word frames
 
 /** Strip HTML tags but KEEP newlines so animation preserves the message layout */
 function stripHtml(html: string): string {
@@ -30,9 +30,9 @@ function stripHtml(html: string): string {
 }
 
 /**
- * Typewriter animation — letter by letter (proper Unicode / Bengali support).
+ * Typewriter animation — word by word (faster than letter-by-letter).
  *  1. Sends "▌" immediately
- *  2. Edits the message progressively, adding a chunk of characters each frame
+ *  2. Edits the message progressively, adding one word per frame
  *  3. Final edit: full HTML text + optional reply_markup
  */
 async function typewrite(
@@ -41,8 +41,9 @@ async function typewrite(
     replyMarkup?: object
 ): Promise<void> {
     const plain = stripHtml(html);
-    // Array.from handles multi-byte Unicode (Bengali, emoji, etc.) correctly
-    const chars = Array.from(plain);
+    // Split on whitespace boundaries while keeping the delimiter (space / newline)
+    // so reconstruction preserves original spacing and line breaks.
+    const tokens = plain.split(/(\s+)/);   // ["word", " ", "word", "\n", "word", ...]
 
     // ── send initial cursor ────────────────────────────────────────────────
     let messageId: number | null = null;
@@ -59,11 +60,16 @@ async function typewrite(
 
     if (!messageId) return;
 
-    // ── animate: every single character ───────────────────────────────────────
-    if (chars.length > 1) {
-        for (let i = 1; i < chars.length; i++) {
+    // ── animate: one word (+ its following whitespace) per frame ──────────
+    if (tokens.length > 1) {
+        // Build word-boundary indices: only stop after non-whitespace tokens
+        const wordEnds: number[] = [];
+        for (let i = 0; i < tokens.length; i++) {
+            if (tokens[i].trim().length > 0) wordEnds.push(i);
+        }
+        for (const idx of wordEnds) {
             await new Promise(r => setTimeout(r, TYPEWRITER_INTERVAL_MS));
-            const partial = chars.slice(0, i).join("") + "▌";
+            const partial = tokens.slice(0, idx + 1).join("") + "▌";
             try {
                 await axios.post(`${tgApi()}/editMessageText`, {
                     chat_id: chatId,
