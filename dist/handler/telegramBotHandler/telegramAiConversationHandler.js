@@ -95,7 +95,7 @@ function isFollowUp(text) {
 async function handleTgLocationSuggest(chatId, locationId) {
     const entity = (0, entityExtractor_1.findLocationById)(locationId);
     if (!entity) {
-        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকা নির্ধারণ করা যায়নি। আপনার এলাকার নাম লিখুন:");
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকা নির্ধারণ করা যায়নি। আপনার উপজেলার নাম লিখুন:");
         return;
     }
     updateState(chatId, { location: entity, awaitingInput: null });
@@ -111,7 +111,7 @@ async function handleTgLocationSuggest(chatId, locationId) {
         return;
     }
     if (!coords) {
-        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${entity.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট এলাকার নাম লিখুন:`);
+        await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${entity.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট উপজেলার নাম লিখুন:`);
         updateState(chatId, { awaitingInput: "location" });
     }
 }
@@ -189,7 +189,7 @@ async function handleTgAiMessage(chatId, text) {
                         return true;
                     }
                 }
-                await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `<b>${bg}</b> বোঝা গেছে! এখন আপনার এলাকার নাম লিখুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`);
+                await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `<b>${bg}</b> বোঝা গেছে! এখন আপনার উপজেলার নাম লিখুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি, হাটহাজারী):`);
                 updateState(chatId, { awaitingInput: "location" });
                 return true;
             }
@@ -217,7 +217,7 @@ async function handleTgAiMessage(chatId, text) {
                         await sendDonorResults(chatId, coords.latitude, coords.longitude, fresh.bloodGroup, fresh.bagCount, fresh.isUrgent);
                         return true;
                     }
-                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${loc.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট এলাকার নাম দিন (যেমন: মিরপুর-১০, গুলশান):`);
+                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${loc.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট উপজেলার নাম দিন (যেমন: মিরপুর, পল্লবী, কোতওয়ালি):`);
                     updateState(chatId, { awaitingInput: "location" });
                     return true;
                 }
@@ -233,7 +233,7 @@ async function handleTgAiMessage(chatId, text) {
                     await (0, sendMessageToTgUser_1.sendTgInlineKeyboardData)(chatId, "🔍 এলাকাটি সঠিকভাবে বোঝা যায়নি। নিচের কোনটি বোঝাতে চেয়েছেন?", rows);
                 }
                 else {
-                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "এলাকার নাম বুঝতে পারিনি। আরো নির্দিষ্ট করে লিখুন\n(যেমন: মিরপুর-১০, গুলশান-১, chittagong, sylhet):");
+                    await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, "উপজেলার নাম বুঝতে পারিনি। আরো নির্দিষ্ট করে লিখুন\n(যেমন: মিরপুর, গুলশান, কোতওয়ালি, সদর, হাটহাজারী):");
                 }
                 return true;
             }
@@ -312,7 +312,7 @@ async function handleTgAiMessage(chatId, text) {
             if (!fresh.location || !resolvedCoords) {
                 const bagHint = fresh.bagCount ? ` (${fresh.bagCount} ব্যাগ)` : "";
                 const prefix = fresh.isUrgent ? "🚨 " : "";
-                await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${prefix}আপনি <b>${fresh.bloodGroup}</b> রক্তের ডোনার খুঁজছেন${bagHint}। আপনার এলাকার নাম লিখুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`);
+                await (0, sendMessageToTgUser_1.sendTgMessage)(chatId, `${prefix}আপনি <b>${fresh.bloodGroup}</b> রক্তের ডোনার খুঁজছেন${bagHint}। আপনার উপজেলার নাম লিখুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি, হাটহাজারী):`);
                 updateState(chatId, { awaitingInput: "location" });
                 return true;
             }

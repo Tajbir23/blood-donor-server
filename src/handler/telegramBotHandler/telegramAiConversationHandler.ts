@@ -123,7 +123,7 @@ function isFollowUp(text: string): boolean {
 export async function handleTgLocationSuggest(chatId: string, locationId: string): Promise<void> {
     const entity = findLocationById(locationId);
     if (!entity) {
-        await sendTgMessage(chatId, "এলাকা নির্ধারণ করা যায়নি। আপনার এলাকার নাম লিখুন:");
+        await sendTgMessage(chatId, "এলাকা নির্ধারণ করা যায়নি। আপনার উপজেলার নাম লিখুন:");
         return;
     }
 
@@ -148,7 +148,7 @@ export async function handleTgLocationSuggest(chatId: string, locationId: string
     }
 
     if (!coords) {
-        await sendTgMessage(chatId, `${entity.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট এলাকার নাম লিখুন:`);
+        await sendTgMessage(chatId, `${entity.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট উপজেলার নাম লিখুন:`);
         updateState(chatId, { awaitingInput: "location" });
     }
 }
@@ -241,7 +241,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                         return true;
                     }
                 }
-                await sendTgMessage(chatId, `<b>${bg}</b> বোঝা গেছে! এখন আপনার এলাকার নাম লিখুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`);
+                await sendTgMessage(chatId, `<b>${bg}</b> বোঝা গেছে! এখন আপনার উপজেলার নাম লিখুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি, হাটহাজারী):`);
                 updateState(chatId, { awaitingInput: "location" });
                 return true;
             } else {
@@ -274,7 +274,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                         await sendDonorResults(chatId, coords.latitude, coords.longitude, fresh.bloodGroup, fresh.bagCount, fresh.isUrgent);
                         return true;
                     }
-                    await sendTgMessage(chatId, `${loc.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট এলাকার নাম দিন (যেমন: মিরপুর-১০, গুলশান):`);
+                    await sendTgMessage(chatId, `${loc.name} এর সঠিক অবস্থান পাওয়া যায়নি। আরো নির্দিষ্ট উপজেলার নাম দিন (যেমন: মিরপুর, পল্লবী, কোতওয়ালি):`);
                     updateState(chatId, { awaitingInput: "location" });
                     return true;
                 }
@@ -292,7 +292,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
                         rows
                     );
                 } else {
-                    await sendTgMessage(chatId, "এলাকার নাম বুঝতে পারিনি। আরো নির্দিষ্ট করে লিখুন\n(যেমন: মিরপুর-১০, গুলশান-১, chittagong, sylhet):");
+                    await sendTgMessage(chatId, "উপজেলার নাম বুঝতে পারিনি। আরো নির্দিষ্ট করে লিখুন\n(যেমন: মিরপুর, গুলশান, কোতওয়ালি, সদর, হাটহাজারী):");
                 }
                 return true;
             }
@@ -383,7 +383,7 @@ export async function handleTgAiMessage(chatId: string, text: string): Promise<b
             if (!fresh.location || !resolvedCoords) {
                 const bagHint = fresh.bagCount ? ` (${fresh.bagCount} ব্যাগ)` : "";
                 const prefix = fresh.isUrgent ? "🚨 " : "";
-                await sendTgMessage(chatId, `${prefix}আপনি <b>${fresh.bloodGroup}</b> রক্তের ডোনার খুঁজছেন${bagHint}। আপনার এলাকার নাম লিখুন (যেমন: ঢাকা, মিরপুর, চট্টগ্রাম):`);
+                await sendTgMessage(chatId, `${prefix}আপনি <b>${fresh.bloodGroup}</b> রক্তের ডোনার খুঁজছেন${bagHint}। আপনার উপজেলার নাম লিখুন (যেমন: মিরপুর, গুলশান, কোতওয়ালি, হাটহাজারী):`);
                 updateState(chatId, { awaitingInput: "location" });
                 return true;
             }
