@@ -263,6 +263,10 @@ export async function predictIntent(text: string): Promise<Prediction> {
         return keywordFallback(text);
     }
 
+    // Always run keyword fallback first — explicit keywords win over model
+    const kb = keywordFallback(text);
+    if (kb.intent !== "UNKNOWN") return kb;
+
     // tf.tidy disposes all intermediate tensors automatically
     const scores = tf.tidy(() => {
         const inputTensor = tf.tensor2d([textToVector(text)]);
@@ -277,12 +281,6 @@ export async function predictIntent(text: string): Promise<Prediction> {
     INTENTS.forEach((label, i) => {
         scoreMap[label] = parseFloat((scores[i] ?? 0).toFixed(4));
     });
-
-    // If model isn't confident, try keyword fallback before giving up
-    if (conf < CONFIDENCE_THRESHOLD) {
-        const kb = keywordFallback(text);
-        if (kb.intent !== "UNKNOWN") return kb;
-    }
 
     return {
         intent: conf >= CONFIDENCE_THRESHOLD ? intent : "UNKNOWN",
@@ -320,13 +318,27 @@ function keywordFallback(text: string): Prediction {
               "iron","anemia","রক্তস্বল্পতা","রক্তদানের উপকার"])) {
         return { intent: "BLOOD_INFO", confidence: 0.8, scores: { ...dummy, BLOOD_INFO: 0.8 } };
     }
-    if (hit(["register","donate blood","become donor","রেজিস্ট্রেশন",
-              "রক্তদান করতে চাই","ডোনার হতে চাই","নিবন্ধন",
-              "donor signup","sign up","join as donor","add me",
-              "donar হতে চাই","donar","donner","দানকারী হতে",
-              "রক্ত দিতে চাই","রক্তদাতা হতে চাই","ডোনার হব",
-              "ডোনার হতে","donor হতে চাই","donor হতে","i want to donate",
-              "want to be donor","want to donate"])) {
+    if (hit([
+              // English variants
+              "register","donate blood","become donor","become a donor",
+              "donor signup","sign up as donor","join as donor","add me as donor",
+              "i want to donate","want to be donor","want to donate",
+              "i want to be a donor","i want to be a donar",
+              "i am a donor","i'm a donor",
+              // donar / donor / donner typo variants
+              "donar","donor","donner",
+              // দাতা variants (Bengali)
+              "দাতা হতে চাই","দাতা হব","দাতা হতে","রক্তদাতা হতে",
+              "রক্তদাতা হব","রক্তদাতা","ব্লাড ডোনার",
+              // mixed Bengali-English
+              "donar হতে","donar হব","donor হতে","donor হব",
+              "ডোনার হতে","ডোনার হব","ডোনার হতে চাই",
+              "donor হতে চাই","donar হতে চাই",
+              // full Bengali
+              "রেজিস্ট্রেশন","রক্তদান করতে চাই","নিবন্ধন",
+              "রক্ত দিতে চাই","রক্তদান করব","রক্ত দেব","রক্ত দেবো",
+              "দানকারী হতে","রেজিস্টার","নিবন্ধন করতে চাই",
+              "আমাকে যোগ করুন","তালিকায় যোগ"])) {
         return { intent: "REGISTER_DONOR", confidence: 0.8, scores: { ...dummy, REGISTER_DONOR: 0.8 } };
     }
     if (hit(["update","donated today","gave blood","আপডেট","রক্ত দিয়েছি",
