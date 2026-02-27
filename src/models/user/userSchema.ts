@@ -133,6 +133,16 @@ const userSchema = new Schema<UserType>({
             index: '2dsphere' // ✅ Ensure geospatial index
         }
     },
+    notificationPreferences: {
+        bloodRequestNotification: {
+            type: Boolean,
+            default: true
+        },
+        emailNotification: {
+            type: Boolean,
+            default: true
+        }
+    },
     token: {
         type: String,
         default: null

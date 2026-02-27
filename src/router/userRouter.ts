@@ -16,6 +16,10 @@ import searchDonar from "../controller/user/searchDonar";
 import updateProfileImage from "../controller/user/updateProfileImage";
 import refreshToken from "../controller/user/refreshToken";
 import reportUser from "../controller/user/reportUser";
+import changePassword from "../controller/user/changePassword";
+import updateProfile from "../controller/user/updateProfile";
+import deleteAccount from "../controller/user/deleteAccount";
+import updateNotificationPreferences from "../controller/user/updateNotificationPreferences";
 
 
 const userRouter = Router();
@@ -35,4 +39,8 @@ userRouter.get("/search-users", searchDonar)
 userRouter.put('/update-profile-image', verifyJwt, profileImageUpload, updateProfileImage)
 userRouter.get('/refresh-token', refreshToken)
 userRouter.post('/report', verifyJwt, reportUser)
+userRouter.put('/change-password', verifyJwt, changePassword)
+userRouter.put('/update-profile', verifyJwt, updateProfile)
+userRouter.delete('/delete-account', verifyJwt, deleteAccount)
+userRouter.put('/notification-preferences', verifyJwt, updateNotificationPreferences)
 export default userRouter;

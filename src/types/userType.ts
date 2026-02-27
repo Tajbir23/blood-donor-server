@@ -43,6 +43,10 @@ interface UserType {
     token: string;
     lastLoginIp: string;
     fingerPrint: FingerprintDataType;
+    notificationPreferences: {
+        bloodRequestNotification: boolean;
+        emailNotification: boolean;
+    };
     createdAt: string;
     updatedAt: string;
 }
