@@ -1,9 +1,12 @@
 import { Request, Response } from "express";
 import organizationModel from "../../models/organization/organizationSchema";
 import userModel from "../../models/user/userSchema";
+import orgJoinRequestModel from "../../models/organization/orgJoinRequestSchema";
+import jwt from "jsonwebtoken";
 
 /**
- * Public endpoint — returns organization details without sensitive admin info
+ * Public endpoint — returns organization details without sensitive admin info.
+ * If the user is logged in (Authorization header), also returns their membership status.
  */
 const getPublicOrganizationById = async (req: Request, res: Response) => {
     const { organizationId } = req.params;
@@ -37,7 +40,47 @@ const getPublicOrganizationById = async (req: Request, res: Response) => {
             organizationId: organization._id
         });
 
-        // Return public-safe data only (no pending requests, no recent members details, no representative email/phone)
+        // ── Check user's membership status if logged in ───────────────────
+        let membershipStatus: string | null = null; // null = not logged in
+        // "owner" | "admin" | "member" | "pending" | "rejected" | null (no relation)
+        
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            try {
+                const token = authHeader.split(' ')[1];
+                const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+                const userId = decoded._id;
+
+                if (userId) {
+                    // Check owner
+                    if (organization.owner?.toString() === userId.toString()) {
+                        membershipStatus = 'owner';
+                    }
+                    // Check admin roles
+                    else if (
+                        organization.admins?.some((id: any) => id.toString() === userId.toString()) ||
+                        organization.superAdmins?.some((id: any) => id.toString() === userId.toString()) ||
+                        organization.moderators?.some((id: any) => id.toString() === userId.toString())
+                    ) {
+                        membershipStatus = 'admin';
+                    }
+                    else {
+                        // Check join request status
+                        const joinRequest = await orgJoinRequestModel.findOne(
+                            { organizationId: organization._id, userId },
+                        ).sort({ createdAt: -1 }).lean();
+
+                        if (joinRequest) {
+                            membershipStatus = joinRequest.status; // "pending" | "accepted" | "rejected"
+                        }
+                    }
+                }
+            } catch {
+                // Invalid token — treat as not logged in, ignore
+            }
+        }
+
+        // Return public-safe data only
         res.status(200).json({
             success: true,
             organization: {
@@ -67,7 +110,8 @@ const getPublicOrganizationById = async (req: Request, res: Response) => {
                     profileImage: owner.profileImage,
                     bloodGroup: owner.bloodGroup
                 } : null,
-                membersCount
+                membersCount,
+                membershipStatus
             }
         });
     } catch (error: any) {
