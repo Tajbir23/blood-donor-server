@@ -115,8 +115,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     next();
 });
 
-// Apply rate limiting to API routes
-app.use('/api/', apiLimiter, router)
+// Apply VPN/proxy detection and rate limiting to API routes
+app.use('/api/', detectVpn, apiLimiter, router)
 
 const setCookies = (req: Request, res: Response, next: NextFunction) => {
     res.cookie("cookie", "hello world", {
