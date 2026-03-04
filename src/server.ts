@@ -25,14 +25,13 @@ import { verifyEmailConfig } from './controller/email/sendEmail'
 import { trainIntentModel } from './handler/facebookBotHandler/ai/intentClassifier'
 import httpServer, { io, setupSocketRedisAdapter } from './handler/socket/socketServer'
 import setUpSocketHandler from './handler/socket/socketHandler'
+import { app, allowOrigins } from './app'
 const PORT = process.env.PORT || 4000
-
-export const app = express()
 
 // Trust proxy - required for Railway deployment behind proxy
 app.set('trust proxy', 1);
 
-// Basic security with Helmet - helps with many security vulnerabilities including DDoS
+// Basic security with Helmet
 // Disable CSP as we'll use our custom implementation for more control
 app.use(helmet({
     crossOriginResourcePolicy: false,
@@ -72,14 +71,6 @@ connectRedis().then(() => {
 })
 
 // CORS setup - must be before routes
-export const allowOrigins = [
-    'http://localhost:3000', 
-    'http://127.0.0.1:5500', 
-    'https://0037-103-248-204-82.ngrok-free.app', 
-    'https://blood-donor-bangladesh.vercel.app',
-    'https://blood-donor-client.vercel.app'
-]
-
 app.use(cors({
     origin: function(origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)

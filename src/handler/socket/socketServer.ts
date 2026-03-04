@@ -1,8 +1,8 @@
 import { Server } from "socket.io";
 import { createServer } from 'node:http'
 import { createAdapter } from '@socket.io/redis-adapter'
-import { app } from "../../server.js";
-import { allowOrigins } from "../../server.js";
+import { app } from "../../app";
+import { allowOrigins } from "../../app";
 import { getRedisClient, getRedisStatus } from '../../config/redis'
 
 const server = createServer(app)
