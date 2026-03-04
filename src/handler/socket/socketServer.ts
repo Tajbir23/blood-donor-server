@@ -38,3 +38,5 @@ export const setupSocketRedisAdapter = async (): Promise<void> => {
         console.log('[Socket.IO] Falling back to in-memory adapter')
     }
 }
+
+export default server

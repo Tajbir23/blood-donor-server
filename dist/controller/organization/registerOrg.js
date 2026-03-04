@@ -19,7 +19,9 @@ const registerOrg = async (req, res) => {
         const organization = await organizationSchema_1.default.create({
             ...organizationData,
             owner: user._id,
-            logoImage: imageUrl
+            logoImage: imageUrl,
+            isActive: false,
+            isBanned: false,
         });
         res.status(201).json({
             success: true,

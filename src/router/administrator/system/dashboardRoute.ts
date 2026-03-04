@@ -26,6 +26,7 @@ import getBotRules   from "../../../controller/administrator/system/dashboard/bo
 import deleteBotRule from "../../../controller/administrator/system/dashboard/botRules/deleteBotRule";
 import updateBotRule from "../../../controller/administrator/system/dashboard/botRules/updateBotRule";
 import getAllDonations from "../../../controller/administrator/system/dashboard/getAllDonations";
+import { getTickets, getMessages, closeTicket } from "../../../controller/administrator/system/dashboard/liveChatController";
 
 const systemDashboardRoute = Router();
 
@@ -68,5 +69,10 @@ systemDashboardRoute.delete('/bot-rules/:id',  verifyJwt, verifyIsSuperAdmin, de
 
 // Donation History routes (admin)
 systemDashboardRoute.get('/donations', verifyJwt, verifyIsAdmin, getAllDonations)
+
+// Live Chat routes (admin / moderator)
+systemDashboardRoute.get('/live-chat/tickets',          verifyJwt, verifyIsAdmin, getTickets)
+systemDashboardRoute.get('/live-chat/messages/:ticketId', verifyJwt, verifyIsAdmin, getMessages)
+systemDashboardRoute.post('/live-chat/close/:ticketId',  verifyJwt, verifyIsAdmin, closeTicket)
 
 export default systemDashboardRoute;

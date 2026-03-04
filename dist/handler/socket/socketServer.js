@@ -39,3 +39,4 @@ const setupSocketRedisAdapter = async () => {
     }
 };
 exports.setupSocketRedisAdapter = setupSocketRedisAdapter;
+exports.default = server;

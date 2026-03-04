@@ -19,7 +19,9 @@ const registerOrg = async (req: Request, res: Response) => {
         const organization = await organizationModel.create({
             ...organizationData,
             owner: user._id,
-            logoImage: imageUrl
+            logoImage: imageUrl,
+            isActive: false,
+            isBanned: false,
         });
 
         res.status(201).json({

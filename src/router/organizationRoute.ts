@@ -11,11 +11,13 @@ import getOrganizationById from "../controller/organization/getOrganizationById"
 import getPublicOrganizationById from "../controller/organization/getPublicOrganizationById";
 import getOrgDashboardStats from "../controller/organization/getOrgDashboardStats";
 import updateOrganization from "../controller/organization/updateOrganization";
+import myJoinRequests from "../controller/organization/myJoinRequests";
 
 const organizationRouter = Router();
 
 organizationRouter.post('/register', verifyJwt, organizationLogoUpload, registerOrg)
 organizationRouter.get('/my_organizations', verifyJwt, myOrganizations)
+organizationRouter.get('/my_join_requests', verifyJwt, myJoinRequests)
 organizationRouter.get('/organizations', allOrganizations)
 organizationRouter.get('/public/:organizationId', getPublicOrganizationById)
 organizationRouter.get('/details/:organizationId', verifyJwt, getOrganizationById)

@@ -13,6 +13,7 @@ import router from './router/router'
 import detectVpn from './handler/validation/detectVpn'
 import scheduleOrganizationCheck from './cron/organizationCheck'
 import scheduleDonationReminder from './cron/donationReminder'
+import scheduleChatCleanup from './cron/chatCleanup'
 import morgan from 'morgan'
 import path from 'path'
 import FacebookBotRouter from './router/facebook_bot/facebook_bot_Router'
@@ -22,6 +23,8 @@ import setupGetStartedButton from './handler/facebookBotHandler/setUpGetStartedB
 import setupPersistentMenu from './handler/facebookBotHandler/setUpPersistantMenu'
 import { verifyEmailConfig } from './controller/email/sendEmail'
 import { trainIntentModel } from './handler/facebookBotHandler/ai/intentClassifier'
+import httpServer, { io, setupSocketRedisAdapter } from './handler/socket/socketServer'
+import setUpSocketHandler from './handler/socket/socketHandler'
 const PORT = process.env.PORT || 4000
 
 export const app = express()
@@ -153,7 +156,11 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 app.use('/webhook', FacebookBotRouter)
 app.use('/telegram-webhook', TelegramBotRouter)
 
-app.listen(PORT, async() => {
+// Setup socket handlers on the io instance from socketServer.ts
+setUpSocketHandler(io)
+
+// Use the HTTP server from socketServer.ts so Express + Socket.IO share the same port
+httpServer.listen(PORT, async() => {
     console.log(`Server is running on http://localhost:${PORT}`)
     
     // Verify email (SMTP) credentials on startup
@@ -164,6 +171,8 @@ app.listen(PORT, async() => {
     console.log('Organization check cron job scheduled');
     scheduleDonationReminder();
     console.log('Donation reminder cron job scheduled');
+    scheduleChatCleanup();
+    console.log('Chat cleanup cron job scheduled');
     await setupGetStartedButton();
     await setupPersistentMenu();
 

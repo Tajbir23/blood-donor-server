@@ -31,6 +31,7 @@ const getBotRules_1 = __importDefault(require("../../../controller/administrator
 const deleteBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/deleteBotRule"));
 const updateBotRule_1 = __importDefault(require("../../../controller/administrator/system/dashboard/botRules/updateBotRule"));
 const getAllDonations_1 = __importDefault(require("../../../controller/administrator/system/dashboard/getAllDonations"));
+const liveChatController_1 = require("../../../controller/administrator/system/dashboard/liveChatController");
 const systemDashboardRoute = (0, express_1.Router)();
 const sliderUpload = (0, imageUpload_1.createImageUpload)('sliderImage', {
     maxWidth: 1000,
@@ -65,4 +66,8 @@ systemDashboardRoute.put('/bot-rules/:id', verifyJwt_1.default, verifyIsSuperAdm
 systemDashboardRoute.delete('/bot-rules/:id', verifyJwt_1.default, verifyIsSuperAdmin_1.default, deleteBotRule_1.default);
 // Donation History routes (admin)
 systemDashboardRoute.get('/donations', verifyJwt_1.default, verifyIsAdmin_1.default, getAllDonations_1.default);
+// Live Chat routes (admin / moderator)
+systemDashboardRoute.get('/live-chat/tickets', verifyJwt_1.default, verifyIsAdmin_1.default, liveChatController_1.getTickets);
+systemDashboardRoute.get('/live-chat/messages/:ticketId', verifyJwt_1.default, verifyIsAdmin_1.default, liveChatController_1.getMessages);
+systemDashboardRoute.post('/live-chat/close/:ticketId', verifyJwt_1.default, verifyIsAdmin_1.default, liveChatController_1.closeTicket);
 exports.default = systemDashboardRoute;

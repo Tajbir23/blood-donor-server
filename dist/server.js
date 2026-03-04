@@ -48,8 +48,10 @@ const db_1 = __importDefault(require("./config/db"));
 const redis_1 = require("./config/redis");
 const limiter_1 = require("./config/limiter");
 const router_1 = __importDefault(require("./router/router"));
+const detectVpn_1 = __importDefault(require("./handler/validation/detectVpn"));
 const organizationCheck_1 = __importDefault(require("./cron/organizationCheck"));
 const donationReminder_1 = __importDefault(require("./cron/donationReminder"));
+const chatCleanup_1 = __importDefault(require("./cron/chatCleanup"));
 const morgan_1 = __importDefault(require("morgan"));
 const path_1 = __importDefault(require("path"));
 const facebook_bot_Router_1 = __importDefault(require("./router/facebook_bot/facebook_bot_Router"));
@@ -59,6 +61,8 @@ const setUpGetStartedButton_1 = __importDefault(require("./handler/facebookBotHa
 const setUpPersistantMenu_1 = __importDefault(require("./handler/facebookBotHandler/setUpPersistantMenu"));
 const sendEmail_1 = require("./controller/email/sendEmail");
 const intentClassifier_1 = require("./handler/facebookBotHandler/ai/intentClassifier");
+const socketServer_1 = __importStar(require("./handler/socket/socketServer"));
+const socketHandler_1 = __importDefault(require("./handler/socket/socketHandler"));
 const PORT = process.env.PORT || 4000;
 exports.app = (0, express_1.default)();
 // Trust proxy - required for Railway deployment behind proxy
@@ -138,8 +142,8 @@ exports.app.use((req, res, next) => {
         "base-uri 'self';");
     next();
 });
-// Apply rate limiting to API routes
-exports.app.use('/api/', limiter_1.apiLimiter, router_1.default);
+// Apply VPN/proxy detection and rate limiting to API routes
+exports.app.use('/api/', detectVpn_1.default, limiter_1.apiLimiter, router_1.default);
 const setCookies = (req, res, next) => {
     res.cookie("cookie", "hello world", {
         httpOnly: true,
@@ -170,7 +174,10 @@ exports.app.use((err, req, res, next) => {
 });
 exports.app.use('/webhook', facebook_bot_Router_1.default);
 exports.app.use('/telegram-webhook', telegram_bot_Router_1.default);
-exports.app.listen(PORT, async () => {
+// Setup socket handlers on the io instance from socketServer.ts
+(0, socketHandler_1.default)(socketServer_1.io);
+// Use the HTTP server from socketServer.ts so Express + Socket.IO share the same port
+socketServer_1.default.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
     // Verify email (SMTP) credentials on startup
     await (0, sendEmail_1.verifyEmailConfig)();
@@ -179,6 +186,8 @@ exports.app.listen(PORT, async () => {
     console.log('Organization check cron job scheduled');
     (0, donationReminder_1.default)();
     console.log('Donation reminder cron job scheduled');
+    (0, chatCleanup_1.default)();
+    console.log('Chat cleanup cron job scheduled');
     await (0, setUpGetStartedButton_1.default)();
     await (0, setUpPersistantMenu_1.default)();
     // Train the Facebook Bot AI intent classifier in the background

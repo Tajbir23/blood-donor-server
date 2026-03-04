@@ -16,9 +16,11 @@ const getOrganizationById_1 = __importDefault(require("../controller/organizatio
 const getPublicOrganizationById_1 = __importDefault(require("../controller/organization/getPublicOrganizationById"));
 const getOrgDashboardStats_1 = __importDefault(require("../controller/organization/getOrgDashboardStats"));
 const updateOrganization_1 = __importDefault(require("../controller/organization/updateOrganization"));
+const myJoinRequests_1 = __importDefault(require("../controller/organization/myJoinRequests"));
 const organizationRouter = (0, express_1.Router)();
 organizationRouter.post('/register', verifyJwt_1.default, imageUpload_1.organizationLogoUpload, registerOrg_1.default);
 organizationRouter.get('/my_organizations', verifyJwt_1.default, myOrganizations_1.default);
+organizationRouter.get('/my_join_requests', verifyJwt_1.default, myJoinRequests_1.default);
 organizationRouter.get('/organizations', allOrganizations_1.default);
 organizationRouter.get('/public/:organizationId', getPublicOrganizationById_1.default);
 organizationRouter.get('/details/:organizationId', verifyJwt_1.default, getOrganizationById_1.default);
