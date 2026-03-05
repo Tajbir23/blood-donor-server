@@ -5,14 +5,23 @@ const findOrgRole = async (userId: string) => {
 
     console.log("userId", userId)
     const organizations = await organizationModel.find({
-        $or: [
-            { owner: new Types.ObjectId(userId) },
-            { admins: new Types.ObjectId(userId) },
-            { moderators: new Types.ObjectId(userId) },
-            { superAdmins: new Types.ObjectId(userId) }
-        ],
-        isActive: true,
-        isBanned: false
+        $and: [
+            {
+                $or: [
+                    { owner: new Types.ObjectId(userId) },
+                    { admins: new Types.ObjectId(userId) },
+                    { moderators: new Types.ObjectId(userId) },
+                    { superAdmins: new Types.ObjectId(userId) }
+                ]
+            },
+            {
+                $or: [
+                    { owner: new Types.ObjectId(userId) }, // Owner can always access (even if org is inactive)
+                    { isActive: true }
+                ]
+            },
+            { isBanned: false }
+        ]
     });
 
     console.log("organizations", organizations) 
@@ -34,7 +43,7 @@ const findOrgRole = async (userId: string) => {
             role = "moderator";
         }
 
-        return {organizationId: org._id, role}
+        return {organizationId: org._id.toString(), role}
     })
 
     console.log("result", data)

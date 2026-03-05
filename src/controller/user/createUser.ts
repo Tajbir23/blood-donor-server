@@ -5,6 +5,7 @@ import generateJwt from "../../handler/validation/generateJwt";
 import addActiveUser from "../../handler/user/addActiveUser";
 import sendOtp from "./sendOtp";
 import findOrgRole from "../administrator/organizations/user/findOrgRole";
+import autoJoinNearestOrg from "../../handler/user/autoJoinNearestOrg";
 
 export const tempStoreUser = new Map<string, any>()
 
@@ -26,6 +27,10 @@ export const saveUser = async (data: any) => {
     await user.save
     await tempStoreUser.delete(user?.email)
     await addActiveUser(user._id)
+    
+    // Auto join nearest organization based on user's thana/district
+    await autoJoinNearestOrg(user._id.toString(), user.districtId, user.thanaId);
+    
     const orgRole = await findOrgRole(user._id.toString());
     const token = generateJwt(user.phone, user._id, user.role, orgRole)
     return {user, token}
