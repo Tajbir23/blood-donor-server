@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import organizationModel from "../../models/organization/organizationSchema";
 import organizationType from "../../types/organizationType";
+import generateJwt from "../../handler/validation/generateJwt";
+import findOrgRole from "../administrator/organizations/user/findOrgRole";
+import userModel from "../../models/user/userSchema";
 
 const registerOrg = async (req: Request, res: Response) => {
     try {
@@ -23,6 +26,18 @@ const registerOrg = async (req: Request, res: Response) => {
             isActive: false,
             isBanned: false,
         });
+
+        // Regenerate JWT with updated orgRole so the owner can access the dashboard
+        const fullUser = await userModel.findById(user._id);
+        if (fullUser) {
+            const orgRole = await findOrgRole(fullUser._id.toString());
+            const newToken = generateJwt(fullUser.phone, fullUser._id, fullUser.role, orgRole);
+            res.cookie("token", newToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: "lax"
+            });
+        }
 
         res.status(201).json({
             success: true,
