@@ -1,5 +1,5 @@
 .qodo
-.env
 node_modules
 uploads
 ai-model
+config.bat
